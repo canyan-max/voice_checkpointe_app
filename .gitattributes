@@ -1,0 +1,14 @@
+# 自动检测文本文件
+* text=auto
+
+# 明确指定源码为文本，并强制工作区使用 LF（覆盖 Windows 的 autocrlf）
+*.c text eol=lf
+*.h text eol=lf
+
+# 明确指定 Shell 脚本保持 LF（防止损坏 Shebang）
+*.sh text eol=lf
+
+# 二进制文件不转换
+*.bin binary
+*.hex binary
+*.svd binary

@@ -1,0 +1,74 @@
+---
+Language: C
+BasedOnStyle: LLVM
+
+# 缩进：4空格，不使用Tab
+IndentWidth: 4
+TabWidth: 4
+UseTab: Never
+
+# Allman风格：{ 独占一行（函数、if、for、while 等）
+BreakBeforeBraces: Allman
+IndentExternBlock: NoIndent
+
+# 列宽限制
+ColumnLimit: 80
+
+
+# 括号前不加空格：if(x)  for(x)  while(x)
+SpaceBeforeParens: Never
+
+# 指针符号靠右（贴近变量名）：int *p
+PointerAlignment: Right
+
+# 连续赋值对齐（= 号竖向对齐）
+AlignConsecutiveAssignments:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+
+# 连续声明对齐（变量名竖向对齐）
+AlignConsecutiveDeclarations:
+  Enabled: true
+  AcrossEmptyLines: false
+  AcrossComments: false
+
+# 尾部行内注释竖向对齐
+AlignTrailingComments:
+  Kind: Always
+  OverEmptyLines: 0
+
+# 宏多行续行符 \ 对齐到右侧
+AlignEscapedNewlines: Right
+
+# 函数参数换行后对齐到开括号位置
+AlignAfterOpenBracket: Align
+BinPackParameters: false
+
+# Include 顺序不排序（嵌入式项目 include 顺序敏感）
+SortIncludes: Never
+
+# 禁止短语句合并为单行
+AllowShortFunctionsOnASingleLine: None
+AllowShortIfStatementsOnASingleLine: Never
+AllowShortLoopsOnASingleLine: false
+AllowShortBlocksOnASingleLine: Never
+
+# 最多保留 1 个空行
+MaxEmptyLinesToKeep: 1
+
+# switch 中 case 相对 switch 缩进
+IndentCaseLabels: true
+
+# 提高在 = 处断行的代价，优先在函数参数内部断行而不是在赋值号处断
+PenaltyBreakAssignment: 500
+PenaltyBreakBeforeFirstCallParameter: 500
+
+# 其他空格设置
+SpaceAfterCStyleCast: false
+SpacesInParentheses: false
+SpacesInSquareBrackets: false
+
+# 不格式化宏定义体（保留 #define NAME   VALUE 中手工对齐的空白）
+SkipMacroDefinitionBody: true
+

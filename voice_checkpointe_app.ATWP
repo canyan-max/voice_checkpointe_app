@@ -1,0 +1,679 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<Root>
+    <WorkBenchVersion>
+        <Version>V1.2.05</Version>
+    </WorkBenchVersion>
+    <MCUInfo>
+        <MCUSerials>AT32F435</MCUSerials>
+        <MCUName>AT32F435VGT7</MCUName>
+        <MCUPackage>LQFP100</MCUPackage>
+    </MCUInfo>
+    <ADC-Common>
+        <Mode>
+            <ModeSub name="Activated" value="TRUE"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="Clock" value="36000000"/>
+        </Parameters>
+    </ADC-Common>
+    <ADC1>
+        <Mode>
+            <ModeSub name="IN0" value="TRUE"/>
+            <ModeSub name="IN1" value="TRUE"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="EnableOrdinaryConversion" value="ENABLE"/>
+            <ParametersSub name="OrdinaryTriggerSource" value="ADC_ORDINARY_TRIG_SOFTWARE"/>
+            <ParametersSub name="Channel_OrdinarySequence_1" value="ADC_CHANNEL_0"/>
+            <ParametersSub name="SamplingTime_OrdinarySequence_1" value="ADC_SAMPLETIME_47_5"/>
+            <ParametersSub name="SamplingRate_OrdinarySequence_1" value="0.600"/>
+        </Parameters>
+    </ADC1>
+    <CRM>
+        <Mode>
+            <ModeSub name="HEXT" value="HEXT-External-Oscillator"/>
+            <ModeSub name="LEXT" value="LEXT-External-Oscillator"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="HEXT" value="HEXT_CRYSTAL"/>
+            <ParametersSub name="LEXT" value="LEXT_CRYSTAL"/>
+        </Parameters>
+    </CRM>
+    <DEBUG>
+        <Mode>
+            <ModeSub name="Debug interface" value="SWD"/>
+        </Mode>
+    </DEBUG>
+    <I2C2>
+        <Mode>
+            <ModeSub name="I2C" value="I2C"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="Timing_Configuration_Value" value="0x60E02C2C"/>
+            <ParametersSub name="DualAddressMode" value="DISABLE"/>
+        </Parameters>
+    </I2C2>
+    <I2S1>
+        <Mode>
+            <ModeSub name="Mode" value="Half_Duplex_Master_TX"/>
+            <ModeSub name="Master_Clock" value="TRUE"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="DataFormat" value="I2S_DATA_16BIT_CHANNEL_16BIT"/>
+            <ParametersSub name="AudioFreq" value="I2S_AUDIO_FREQUENCY_48K"/>
+            <ParametersSub name="RealAudioFreq" value="46875"/>
+            <ParametersSub name="ErrorAudioFreq" value="-2.34"/>
+            <ParametersSub name="I2S_DIV" value="6"/>
+            <ParametersSub name="I2S_ODD" value="0"/>
+            <ParametersSub name="MCLKOutput" value="TRUE"/>
+        </Parameters>
+    </I2S1>
+    <QSPI1>
+        <Mode>
+            <ModeSub name="QSPI_State" value="TRUE"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="ClkDivision" value="QSPI_CLK_DIV_3"/>
+            <ParametersSub name="ClockFrequency" value="48000000"/>
+            <ParametersSub name="PortSwitch" value="QSPI_PORT_CMD"/>
+        </Parameters>
+    </QSPI1>
+    <SDIO2>
+        <Mode>
+            <ModeSub name="Mode" value="SD_4_bit"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="ClockFrequency" value="72000000"/>
+        </Parameters>
+    </SDIO2>
+    <SPI3>
+        <Mode>
+            <ModeSub name="Mode" value="Full_Duplex_Master"/>
+            <ModeSub name="CS_Signal" value="CS_Signal_Hard_Output"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="TransmissionMode" value="SPI_TRANSMIT_FULL_DUPLEX"/>
+            <ParametersSub name="Mode" value="SPI_MODE_MASTER"/>
+            <ParametersSub name="FirstBit" value="SPI_FIRST_BIT_MSB"/>
+            <ParametersSub name="ClockFrequency" value="18000000"/>
+        </Parameters>
+    </SPI3>
+    <SYSTEM>
+        <Mode>
+            <ModeSub name="Time_Base" value="SysTick"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="Delay_Mode" value="Interrupt"/>
+        </Parameters>
+    </SYSTEM>
+    <USART1>
+        <Mode>
+            <ModeSub name="Mode" value="Asynchronous"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="BaudRate" value="9600"/>
+            <ParametersSub name="RealBaudRate" value="9600"/>
+        </Parameters>
+        <Interrupts>
+            <InterruptsSub name="Interrupt_IDLE" value="TRUE"/>
+        </Interrupts>
+    </USART1>
+    <USART2>
+        <Mode>
+            <ModeSub name="Mode" value="Asynchronous"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="BaudRate" value="9600"/>
+            <ParametersSub name="RealBaudRate" value="9600"/>
+        </Parameters>
+        <Interrupts>
+            <InterruptsSub name="Interrupt_IDLE" value="TRUE"/>
+        </Interrupts>
+    </USART2>
+    <USART3>
+        <Mode>
+            <ModeSub name="Mode" value="Asynchronous"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="RealBaudRate" value="115200"/>
+        </Parameters>
+        <Interrupts>
+            <InterruptsSub name="Interrupt_IDLE" value="TRUE"/>
+        </Interrupts>
+    </USART3>
+    <UART5>
+        <Mode>
+            <ModeSub name="Mode" value="Asynchronous"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="RealBaudRate" value="115200"/>
+        </Parameters>
+    </UART5>
+    <USB_OTGFS2>
+        <Mode>
+            <ModeSub name="Mode" value="Host_Only"/>
+            <ModeSub name="Activate_VBUS" value="TRUE"/>
+        </Mode>
+    </USB_OTGFS2>
+    <FATFS>
+        <Mode>
+            <ModeSub name="SDIO" value="TRUE"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="SDIO_Instance" value="SDIO2"/>
+            <ParametersSub name="USBH_Instance" value="null"/>
+            <ParametersSub name="FF_CODE_PAGE" value="936"/>
+            <ParametersSub name="FF_USE_LFN" value="2"/>
+            <ParametersSub name="FF_LFN_UNICODE" value="1"/>
+            <ParametersSub name="FF_VOLUMES" value="2"/>
+            <ParametersSub name="FF_FS_REENTRANT" value="1"/>
+            <ParametersSub name="FF_SYNC_t" value="SemaphoreHandle_t"/>
+        </Parameters>
+    </FATFS>
+    <FREERTOS>
+        <Mode>
+            <ModeSub name="Activated" value="TRUE"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="MCU_SRAM_SIZE" value="393216"/>
+            <ParametersSub name="configCPU_CLOCK_HZ" value="144000000"/>
+            <ParametersSub name="configUSE_RECURSIVE_MUTEXES" value="1"/>
+            <ParametersSub name="TOTAL_HEAP_SIZE" value="131072"/>
+            <ParametersSub name="USE_IDLE_HOOK" value="1"/>
+            <ParametersSub name="USE_TICK_HOOK" value="1"/>
+            <ParametersSub name="CHECK_FOR_STACK_OVERFLOW" value="1"/>
+        </Parameters>
+        <Tasks>
+            <ParametersGroup>
+                <ParametersSub name="TaskName" value="start_test_tasks"/>
+                <ParametersSub name="TaskPriority" value="0"/>
+                <ParametersSub name="TaskStackSize" value="128"/>
+                <ParametersSub name="TaskEntryFunction" value="start_or_test_f"/>
+                <ParametersSub name="TaskCodeGenerationOption" value="Default"/>
+                <ParametersSub name="TaskParameters" value="NULL"/>
+                <ParametersSub name="TaskAllocation" value="Dynamic"/>
+                <ParametersSub name="TaskStackBuffer" value="NULL"/>
+                <ParametersSub name="TaskBuffer" value="NULL"/>
+            </ParametersGroup>
+        </Tasks>
+    </FREERTOS>
+    <DMA>
+        <USART1_RX>
+            <ParametersSub name="Instance" value="DMA1_Channel2"/>
+            <ParametersSub name="Mode" value="TRUE"/>
+            <ParametersSub name="SyncRequestCount" value="1"/>
+            <ParametersSub name="RequestCount" value="1"/>
+            <ParametersSub name="Interrupt_FDT" value="ENABLE"/>
+            <ParametersSub name="Interrupt_HDT" value="ENABLE"/>
+            <ParametersSub name="Interrupt_DTERR" value="ENABLE"/>
+        </USART1_RX>
+        <USART2_RX>
+            <ParametersSub name="Instance" value="DMA1_Channel1"/>
+            <ParametersSub name="Mode" value="TRUE"/>
+            <ParametersSub name="SyncRequestCount" value="1"/>
+            <ParametersSub name="RequestCount" value="1"/>
+            <ParametersSub name="Interrupt_FDT" value="ENABLE"/>
+            <ParametersSub name="Interrupt_HDT" value="ENABLE"/>
+            <ParametersSub name="Interrupt_DTERR" value="ENABLE"/>
+        </USART2_RX>
+        <USART3_RX>
+            <ParametersSub name="Instance" value="DMA1_Channel3"/>
+            <ParametersSub name="Mode" value="TRUE"/>
+            <ParametersSub name="SyncRequestCount" value="1"/>
+            <ParametersSub name="RequestCount" value="1"/>
+            <ParametersSub name="Interrupt_FDT" value="ENABLE"/>
+            <ParametersSub name="Interrupt_HDT" value="ENABLE"/>
+            <ParametersSub name="Interrupt_DTERR" value="ENABLE"/>
+        </USART3_RX>
+    </DMA>
+    <EDMA>
+        <SPI1_TX>
+            <ParametersSub name="Instance" value="EDMA_Stream1"/>
+            <ParametersSub name="Mode" value="TRUE"/>
+            <ParametersSub name="PeriphDataAlignment" value="EDMA_PERIPHERAL_DATA_WIDTH_HALFWORD"/>
+            <ParametersSub name="MemDataAlignment" value="EDMA_MEMORY_DATA_WIDTH_HALFWORD"/>
+            <ParametersSub name="SourceStride" value="0"/>
+            <ParametersSub name="DestinationStride" value="0"/>
+            <ParametersSub name="XAxisCount" value="0"/>
+            <ParametersSub name="YAxisCount" value="0"/>
+            <ParametersSub name="SyncRequestCount" value="1"/>
+            <ParametersSub name="RequestCount" value="1"/>
+            <ParametersSub name="Interrupt_FDT" value="ENABLE"/>
+            <ParametersSub name="Interrupt_HDT" value="ENABLE"/>
+            <ParametersSub name="Interrupt_DTERR" value="ENABLE"/>
+        </SPI1_TX>
+    </EDMA>
+    <NVIC>
+        <SVC_Handler>1;0;0;0;0;0</SVC_Handler>
+        <PendSV_Handler>1;15;0;1;0;0</PendSV_Handler>
+        <SysTick_Handler>1;15;0;1;0;1</SysTick_Handler>
+        <FLASH_IRQHandler>0;5;0;1;0;0</FLASH_IRQHandler>
+        <CRM_IRQHandler>0;5;0;1;0;0</CRM_IRQHandler>
+        <EDMA_Stream1_IRQHandler>1;5;0;1;0;1</EDMA_Stream1_IRQHandler>
+        <ADC1_2_3_IRQHandler>0;5;0;1;0;0</ADC1_2_3_IRQHandler>
+        <I2C2_EVT_IRQHandler>0;5;0;1;0;0</I2C2_EVT_IRQHandler>
+        <I2C2_ERR_IRQHandler>0;5;0;1;0;0</I2C2_ERR_IRQHandler>
+        <SPI1_IRQHandler>0;5;0;1;0;0</SPI1_IRQHandler>
+        <USART1_IRQHandler>1;5;0;1;0;1</USART1_IRQHandler>
+        <USART2_IRQHandler>1;5;0;1;0;1</USART2_IRQHandler>
+        <USART3_IRQHandler>1;5;0;1;0;1</USART3_IRQHandler>
+        <SPI3_I2S3EXT_IRQHandler>0;5;0;1;0;0</SPI3_I2S3EXT_IRQHandler>
+        <UART5_IRQHandler>0;5;0;1;0;0</UART5_IRQHandler>
+        <DMA1_Channel1_IRQHandler>1;5;0;1;0;1</DMA1_Channel1_IRQHandler>
+        <DMA1_Channel2_IRQHandler>1;5;0;1;0;1</DMA1_Channel2_IRQHandler>
+        <DMA1_Channel3_IRQHandler>1;5;0;1;0;1</DMA1_Channel3_IRQHandler>
+        <OTGFS2_WKUP_IRQHandler>0;5;0;1;0;0</OTGFS2_WKUP_IRQHandler>
+        <OTGFS2_IRQHandler>0;5;0;1;0;0</OTGFS2_IRQHandler>
+        <FPU_IRQHandler>0;5;0;1;0;0</FPU_IRQHandler>
+        <QSPI1_IRQHandler>0;5;0;1;0;0</QSPI1_IRQHandler>
+        <DMAMUX_IRQHandler>0;5;0;1;0;0</DMAMUX_IRQHandler>
+        <SDIO2_IRQHandler>0;5;0;1;0;0</SDIO2_IRQHandler>
+    </NVIC>
+    <GPIO>
+        <Signal SignalName="GPIO_Input" PinName="PE2">
+            <Parameters name="Label" value="KEY3_PE2"/>
+        </Signal>
+        <Signal SignalName="GPIO_Input" PinName="PE3">
+            <Parameters name="Label" value="KEY4_PE3"/>
+        </Signal>
+        <Signal SignalName="GPIO_Input" PinName="PE4">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
+            <Parameters name="Label" value="TPA_FAULTZ_PE4"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PE5">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
+            <Parameters name="Label" value="TPA_SDZ_PE5"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PE6">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
+            <Parameters name="Label" value="TPA_MUTE_PE6"/>
+        </Signal>
+        <Signal SignalName="GPIO_Input" PinName="PC13">
+            <Parameters name="Label" value="SDIO2_TFCD_PC13"/>
+        </Signal>
+        <Signal SignalName="SDIO2_D0" PinName="PC0">
+            <Parameters name="Label" value="SDDIO2_TFD0_PC0"/>
+        </Signal>
+        <Signal SignalName="SDIO2_D1" PinName="PC1">
+            <Parameters name="Label" value="SDDIO2_TFD1_PC1"/>
+        </Signal>
+        <Signal SignalName="SDIO2_D2" PinName="PC2">
+            <Parameters name="Label" value="SDDIO2_TFD2_PC2"/>
+        </Signal>
+        <Signal SignalName="SDIO2_D3" PinName="PC3">
+            <Parameters name="Label" value="SDDIO2_TFD3_PC3"/>
+        </Signal>
+        <Signal SignalName="ADC1_IN0" PinName="PA0">
+            <Parameters name="Label" value="AUDIO_IN_ADC_PA0"/>
+        </Signal>
+        <Signal SignalName="ADC1_IN1" PinName="PA1">
+            <Parameters name="Label" value="BATV_ADC_PA1"/>
+        </Signal>
+        <Signal SignalName="SDIO2_CK" PinName="PA2">
+            <Parameters name="Label" value="SDDIO2_TFCLX_PA2"/>
+        </Signal>
+        <Signal SignalName="SDIO2_CMD" PinName="PA3">
+            <Parameters name="Label" value="SDDIO2_TFCMD_PA3"/>
+        </Signal>
+        <Signal SignalName="I2S1_WS" PinName="PA4">
+            <Parameters name="Label" value="IIS_LR_WS_PA4"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PA5">
+            <Parameters name="Label" value="PIR_POWER_PA5"/>
+        </Signal>
+        <Signal SignalName="QSPI1_IO0" PinName="PA6">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="QSPI1_SI0_PA6"/>
+        </Signal>
+        <Signal SignalName="QSPI1_IO1" PinName="PA7">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="QSPI1_SI1_PA7"/>
+        </Signal>
+        <Signal SignalName="QSPI1_IO2" PinName="PC4">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="QSPI1_SI2_PC4"/>
+        </Signal>
+        <Signal SignalName="QSPI1_IO3" PinName="PC5">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="QSPI1_SI3_PC5"/>
+        </Signal>
+        <Signal SignalName="USART2_RX" PinName="PB0">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
+            <Parameters name="Label" value="USART2_RX_PB0"/>
+        </Signal>
+        <Signal SignalName="QSPI1_SCK" PinName="PB1">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="QSPI1_SCK_PB1"/>
+        </Signal>
+        <Signal SignalName="SPI3_MOSI" PinName="PB2/BOOT1">
+            <Parameters name="Label" value="SPI3GT_MO_PB2"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PE7">
+            <Parameters name="Label" value="E27_RELOAD_PE7"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PE8">
+            <Parameters name="Label" value="E27_RESET_PE8"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PE9">
+            <Parameters name="Label" value="DEBUG_SCOPE_PE9"/>
+        </Signal>
+        <Signal SignalName="UART5_TX" PinName="PE10">
+            <Parameters name="Label" value="UART5_LOG_TX_PE10"/>
+        </Signal>
+        <Signal SignalName="UART5_RX" PinName="PE11">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
+            <Parameters name="Label" value="UART5_LOG_RX_PE11"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PE12">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
+            <Parameters name="Label" value="LED1_REMOTE_PE12"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PE13">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
+            <Parameters name="Label" value="LED2_UPDATA_PE13"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PE14">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
+            <Parameters name="Label" value="LED3_BRCAT_PE14"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PE15">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
+            <Parameters name="Label" value="LED4_RUN_PE15"/>
+        </Signal>
+        <Signal SignalName="USART3_TX" PinName="PB10">
+            <Parameters name="Label" value="TTS_TX_PB10"/>
+        </Signal>
+        <Signal SignalName="USART3_RX" PinName="PB11">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
+            <Parameters name="Label" value="TTS_RX_PB11"/>
+        </Signal>
+        <Signal SignalName="SPI3_SCK" PinName="PB12">
+            <Parameters name="Label" value="SPI3GT_SCK_PB12"/>
+        </Signal>
+        <Signal SignalName="USB_OTGFS2_VBUS" PinName="PB13">
+            <Parameters name="Label" value="USB_VBUS_PB13"/>
+        </Signal>
+        <Signal SignalName="USB_OTGFS2_D-" PinName="PB14">
+            <Parameters name="Label" value="USB_DN_PB14"/>
+        </Signal>
+        <Signal SignalName="USB_OTGFS2_D+" PinName="PB15">
+            <Parameters name="Label" value="USB_DP_PB15"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD8">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="HUB_R1_PD8"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD9">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="HUB_G1_PD9"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD10">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="HUB_B1_PD10"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD11">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="HUB_R2_PD11"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD12">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="HUB_G2_PD12"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD13">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="HUB_B2_PD13"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD15">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="HUB_SCK_PD15"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PC7">
+            <Parameters name="Label" value="LED_OUT_B_PC7"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PC8">
+            <Parameters name="Label" value="LED_OUT_R_PC8"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PC9">
+            <Parameters name="Label" value="LED_POWER_CS_PC9"/>
+        </Signal>
+        <Signal SignalName="USART2_TX" PinName="PA8">
+            <Parameters name="Label" value="USART2_TX_PA8"/>
+        </Signal>
+        <Signal SignalName="USART1_TX" PinName="PA9">
+            <Parameters name="Label" value="UART1485_RX_PA9"/>
+        </Signal>
+        <Signal SignalName="USART1_RX" PinName="PA10">
+            <Parameters name="Label" value="UART1485_RX_PA10"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PA11">
+            <Parameters name="Label" value="E27_POWEREN_PA11"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PA12">
+            <Parameters name="Label" value="RS485_RXEN_PA12"/>
+        </Signal>
+        <Signal SignalName="I2C2_SCL" PinName="PH2">
+            <Parameters name="Label" value="EEPROM_SCL_PH2"/>
+        </Signal>
+        <Signal SignalName="SPI3_CS" PinName="PA15">
+            <Parameters name="Label" value="SPI3GT_CS_PA15"/>
+        </Signal>
+        <Signal SignalName="GPIO_Input" PinName="PC10">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
+            <Parameters name="Label" value="PIR_IN_PC10"/>
+        </Signal>
+        <Signal SignalName="QSPI1_CS" PinName="PC11">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="QSPI1_WS_PC11"/>
+        </Signal>
+        <Signal SignalName="I2C2_SDA" PinName="PC12">
+            <Parameters name="Label" value="EEPROM_SDA_PC12"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD0">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="HUB_A_PD0"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD1">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="HUB_B_PD1"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD2">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="HUB_C_PD2"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD3">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="HUB_D_PD3"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD4">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
+            <Parameters name="Label" value="HUB_E_PD4"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD5">
+            <Parameters name="Label" value="HUB_LAT_PD5"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PD6">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
+            <Parameters name="Label" value="HUB_OE245_PD6"/>
+        </Signal>
+        <Signal SignalName="GPIO_Input" PinName="PD7">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
+            <Parameters name="Label" value="ALARM_IN_PD7"/>
+        </Signal>
+        <Signal SignalName="I2S1_CK" PinName="PB3">
+            <Parameters name="Label" value="IIS_CLK_PB3"/>
+        </Signal>
+        <Signal SignalName="SPI3_MISO" PinName="PB4">
+            <Parameters name="Label" value="SPI3GT_MI_PB4"/>
+        </Signal>
+        <Signal SignalName="I2S1_SD" PinName="PB5">
+            <Parameters name="Label" value="IIS_SD_PB5"/>
+        </Signal>
+        <Signal SignalName="I2S1_MCK" PinName="PB6">
+            <Parameters name="Label" value="IIS_MCK_PB6"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PB7">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
+            <Parameters name="Label" value="ALARM_OUT_PB7"/>
+        </Signal>
+        <Signal SignalName="GPIO_Input" PinName="PB8">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
+            <Parameters name="Label" value="TTS_R_B_PB8"/>
+        </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PB9">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
+            <Parameters name="Label" value="TTS_RST_PB9"/>
+        </Signal>
+        <Signal SignalName="GPIO_Input" PinName="PE0">
+            <Parameters name="Label" value="KEY1_PE0"/>
+        </Signal>
+        <Signal SignalName="GPIO_Input" PinName="PE1">
+            <Parameters name="Label" value="KEY2_PE1"/>
+        </Signal>
+    </GPIO>
+    <ClockConfiguration>
+        <rtcsel>0</rtcsel>
+        <rtcdiv>2</rtcdiv>
+        <hext>8.000000</hext>
+        <pllrcs>0</pllrcs>
+        <pllms>1</pllms>
+        <pllns>144</pllns>
+        <pllfr>8</pllfr>
+        <sclkselect>1</sclkselect>
+        <ahbdiv>1</ahbdiv>
+        <apb1div>2</apb1div>
+        <apb2div>2</apb2div>
+        <usbdiv>6.0</usbdiv>
+        <hicktousb>1</hicktousb>
+        <hicktosclk>0</hicktosclk>
+        <clkout1>0</clkout1>
+        <clkout1div1>1</clkout1div1>
+        <clkout1div2>1</clkout1div2>
+        <clkout2>0</clkout2>
+        <clkout2div1>1</clkout2div1>
+        <clkout2div2>1</clkout2div2>
+        <systicsel>1</systicsel>
+    </ClockConfiguration>
+    <PINInfo>
+        <PinSub pinname="PE2" signalname="GPIO_Input" signaltype="3"/>
+        <PinSub pinname="PE3" signalname="GPIO_Input" signaltype="3"/>
+        <PinSub pinname="PE4" signalname="GPIO_Input" signaltype="3"/>
+        <PinSub pinname="PE5" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PE6" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PC13" signalname="GPIO_Input" signaltype="3"/>
+        <PinSub pinname="PC14/LEXT_IN" signalname="CRM_LEXT_IN" signaltype="2"/>
+        <PinSub pinname="PC15/LEXT_OUT" signalname="CRM_LEXT_OUT" signaltype="2"/>
+        <PinSub pinname="PH0/HEXT_IN" signalname="CRM_HEXT_IN" signaltype="2"/>
+        <PinSub pinname="PH1/HEXT_OUT" signalname="CRM_HEXT_OUT" signaltype="2"/>
+        <PinSub pinname="PC0" signalname="SDIO2_D0" signaltype="2"/>
+        <PinSub pinname="PC1" signalname="SDIO2_D1" signaltype="2"/>
+        <PinSub pinname="PC2" signalname="SDIO2_D2" signaltype="2"/>
+        <PinSub pinname="PC3" signalname="SDIO2_D3" signaltype="2"/>
+        <PinSub pinname="PA0" signalname="ADC1_IN0" signaltype="2"/>
+        <PinSub pinname="PA1" signalname="ADC1_IN1" signaltype="2"/>
+        <PinSub pinname="PA2" signalname="SDIO2_CK" signaltype="2"/>
+        <PinSub pinname="PA3" signalname="SDIO2_CMD" signaltype="2"/>
+        <PinSub pinname="PA4" signalname="I2S1_WS" signaltype="3"/>
+        <PinSub pinname="PA5" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PA6" signalname="QSPI1_IO0" signaltype="2"/>
+        <PinSub pinname="PA7" signalname="QSPI1_IO1" signaltype="2"/>
+        <PinSub pinname="PC4" signalname="QSPI1_IO2" signaltype="2"/>
+        <PinSub pinname="PC5" signalname="QSPI1_IO3" signaltype="2"/>
+        <PinSub pinname="PB0" signalname="USART2_RX" signaltype="2"/>
+        <PinSub pinname="PB1" signalname="QSPI1_SCK" signaltype="2"/>
+        <PinSub pinname="PB2/BOOT1" signalname="SPI3_MOSI" signaltype="3"/>
+        <PinSub pinname="PE7" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PE8" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PE9" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PE10" signalname="UART5_TX" signaltype="2"/>
+        <PinSub pinname="PE11" signalname="UART5_RX" signaltype="2"/>
+        <PinSub pinname="PE12" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PE13" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PE14" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PE15" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PB10" signalname="USART3_TX" signaltype="3"/>
+        <PinSub pinname="PB11" signalname="USART3_RX" signaltype="3"/>
+        <PinSub pinname="PB12" signalname="SPI3_SCK" signaltype="3"/>
+        <PinSub pinname="PB13" signalname="USB_OTGFS2_VBUS" signaltype="3"/>
+        <PinSub pinname="PB14" signalname="USB_OTGFS2_D-" signaltype="2"/>
+        <PinSub pinname="PB15" signalname="USB_OTGFS2_D+" signaltype="2"/>
+        <PinSub pinname="PD8" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD9" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD10" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD11" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD12" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD13" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD15" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PC7" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PC8" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PC9" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PA8" signalname="USART2_TX" signaltype="3"/>
+        <PinSub pinname="PA9" signalname="USART1_TX" signaltype="3"/>
+        <PinSub pinname="PA10" signalname="USART1_RX" signaltype="2"/>
+        <PinSub pinname="PA11" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PA12" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PA13" signalname="DEBUG_JTMS_SWDIO" signaltype="2"/>
+        <PinSub pinname="PH2" signalname="I2C2_SCL" signaltype="3"/>
+        <PinSub pinname="PA14" signalname="DEBUG_JTCK_SWCLK" signaltype="2"/>
+        <PinSub pinname="PA15" signalname="SPI3_CS" signaltype="3"/>
+        <PinSub pinname="PC10" signalname="GPIO_Input" signaltype="3"/>
+        <PinSub pinname="PC11" signalname="QSPI1_CS" signaltype="2"/>
+        <PinSub pinname="PC12" signalname="I2C2_SDA" signaltype="2"/>
+        <PinSub pinname="PD0" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD1" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD2" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD3" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD4" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD5" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD6" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PD7" signalname="GPIO_Input" signaltype="3"/>
+        <PinSub pinname="PB3" signalname="I2S1_CK" signaltype="2"/>
+        <PinSub pinname="PB4" signalname="SPI3_MISO" signaltype="3"/>
+        <PinSub pinname="PB5" signalname="I2S1_SD" signaltype="2"/>
+        <PinSub pinname="PB6" signalname="I2S1_MCK" signaltype="3"/>
+        <PinSub pinname="PB7" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PB8" signalname="GPIO_Input" signaltype="3"/>
+        <PinSub pinname="PB9" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PE0" signalname="GPIO_Input" signaltype="3"/>
+        <PinSub pinname="PE1" signalname="GPIO_Input" signaltype="3"/>
+    </PINInfo>
+    <ProjectInfomation>
+        <ProjectName>voice_checkpointe_app</ProjectName>
+        <ProjectLocation>D:/program_CC/20_VOICE_CHECKPOINT/01_Prg/App</ProjectLocation>
+        <ToolchainIDE>MDK_V5</ToolchainIDE>
+        <ARMCompiler>1</ARMCompiler>
+        <BackupCode>true</BackupCode>
+        <KeepUserCode>true</KeepUserCode>
+        <NotUsedPinAnalog>true</NotUsedPinAnalog>
+        <CodeSplitIP>true</CodeSplitIP>
+        <AddNecessaryFileFlag>true</AddNecessaryFileFlag>
+        <DeletePriviousFiles>true</DeletePriviousFiles>
+        <MinHeapSize>0x200</MinHeapSize>
+        <MinStackSize>0xC00</MinStackSize>
+        <UseFirmware>true</UseFirmware>
+        <PackageVersion>V2.2.6</PackageVersion>
+    </ProjectInfomation>
+    <FunctionRankInfo>
+        <RankSub RankNum="1" FixPosFlag="TRUE" FuncName="wk_system_clock_config" InstanceName="CRM" CodeSection="config_system_clock_rtthread" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="2" FixPosFlag="TRUE" FuncName="wk_periph_clock_config" InstanceName="CRM" CodeSection="config periph clock" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="8" FixPosFlag="TRUE" FuncName="wk_nvic_config" InstanceName="NVIC" CodeSection="config nvic" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="9" FixPosFlag="TRUE" FuncName="wk_timebase_init" InstanceName="SYSTEM" CodeSection="config timebase" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="10" FixPosFlag="TRUE" FuncName="wk_gpio_config" InstanceName="GPIO" CodeSection="gpio function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="11" FixPosFlag="FALSE" FuncName="wk_adc_common_init" InstanceName="ADC-Common" CodeSection="adc_common function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="12" FixPosFlag="FALSE" FuncName="wk_adc1_init" InstanceName="ADC1" CodeSection="adc1 function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="15" FixPosFlag="FALSE" FuncName="wk_dma1_channel1_init" InstanceName="DMA1_Channel1" CodeSection="dma1_channel1_init" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="16" FixPosFlag="FALSE" FuncName="wk_dma1_channel2_init" InstanceName="DMA1_Channel2" CodeSection="dma1_channel2_init" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="17" FixPosFlag="FALSE" FuncName="wk_dma1_channel3_init" InstanceName="DMA1_Channel3" CodeSection="dma1_channel3_init" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="29" FixPosFlag="FALSE" FuncName="wk_edma_stream1_init" InstanceName="EDMA_Stream1" CodeSection="edma_stream1_init" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="47" FixPosFlag="FALSE" FuncName="wk_usart1_init" InstanceName="USART1" CodeSection="usart1 function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="48" FixPosFlag="FALSE" FuncName="wk_usart2_init" InstanceName="USART2" CodeSection="usart2 function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="49" FixPosFlag="FALSE" FuncName="wk_usart3_init" InstanceName="USART3" CodeSection="usart3 function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="57" FixPosFlag="FALSE" FuncName="wk_usb_otgfs2_init" InstanceName="USB_OTGFS2" CodeSection="usb_otgfs2 function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="64" FixPosFlag="FALSE" FuncName="wk_spi3_init" InstanceName="SPI3" CodeSection="spi3 function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="66" FixPosFlag="FALSE" FuncName="wk_qspi1_init" InstanceName="QSPI1" CodeSection="qspi1 function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="68" FixPosFlag="FALSE" FuncName="wk_i2s1_init" InstanceName="I2S1" CodeSection="i2s1 function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="82" FixPosFlag="FALSE" FuncName="wk_sdio2_init" InstanceName="SDIO2" CodeSection="sdio2 function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="101" FixPosFlag="FALSE" FuncName="fatfs_disk_init" InstanceName="FATFS" CodeSection="fatfs_app_init" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="51" FixPosFlag="FALSE" FuncName="wk_uart5_init" InstanceName="UART5" CodeSection="uart5 function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="73" FixPosFlag="FALSE" FuncName="wk_i2c2_init" InstanceName="I2C2" CodeSection="i2c2 function" MainDoNotCallFlag="FALSE"/>
+    </FunctionRankInfo>
+</Root>
