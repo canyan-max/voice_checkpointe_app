@@ -1,0 +1,50 @@
+# 编辑器/IDE 配置
+.vscode/
+.claude/
+# STM32CubeMX 生成文件（按你的要求忽略）
+# *.mxproject
+
+# 可执行文件与脚本（按你的要求忽略）
+*.exe
+*.bat
+
+# 编译中间文件（目标文件、依赖、调试符号等）
+*.d
+*.o
+*.hex
+*.dep
+*.htm
+*.build_log.*
+*.iex
+*.lnp
+*.axf
+*.map
+*.lst
+*.elf
+*.bak
+*.log
+# Keil 项目用户本地配置（布局、调试器选项等，每台电脑不同）
+*.uvoptx
+*.uvguix.*
+*.uvgui.*
+*.scvd
+
+# 调试器与日志配置文件
+*.debconf
+*.ini
+*.bin
+
+# 其他数据表格/文本文件（按你原有规则）
+*.csv
+*.xlsx
+*.xls
+*.xlsm
+*.xlsb
+*.txt
+*.json
+
+# 忽略 MDK-ARM 目录下的所有子文件夹（调试配置、RTE、编译输出等全部忽略）
+# MDK-ARM/*/
+project/MDK_V5/*/
+project/inc/backup
+project/src/backup
