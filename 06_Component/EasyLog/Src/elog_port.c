@@ -83,12 +83,10 @@ void elog_port_output(const char *log, size_t size) {
 #else 
     for(size_t i=0;i<size;i++)
     {
-        while(usart_flag_get(USART1, USART_TDBE_FLAG) == RESET);
-        usart_data_transmit(USART1, (uint16_t)log[i]);
-        while(usart_flag_get(USART1, USART_TDC_FLAG) == RESET);
+        while(usart_flag_get(UART5, USART_TDBE_FLAG) == RESET);
+        usart_data_transmit(UART5, (uint16_t)log[i]);
+        while(usart_flag_get(UART5, USART_TDC_FLAG) == RESET);
     }
-
-    // HAL_UART_Transmit(&huart1, (uint8_t*)log, size, HAL_MAX_DELAY);
 #endif // end of USE_JLINK_RTT
 
 }

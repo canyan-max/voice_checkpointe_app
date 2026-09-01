@@ -83,7 +83,8 @@
             <ModeSub name="Mode" value="SD_4_bit"/>
         </Mode>
         <Parameters>
-            <ParametersSub name="ClockFrequency" value="72000000"/>
+            <ParametersSub name="Clock_division" value="10"/>
+            <ParametersSub name="ClockFrequency" value="12000000"/>
         </Parameters>
     </SDIO2>
     <SPI3>
@@ -100,7 +101,7 @@
     </SPI3>
     <SYSTEM>
         <Mode>
-            <ModeSub name="Time_Base" value="SysTick"/>
+            <ModeSub name="Time_Base" value="TMR20"/>
         </Mode>
         <Parameters>
             <ParametersSub name="Delay_Mode" value="Interrupt"/>
@@ -162,10 +163,9 @@
         <Parameters>
             <ParametersSub name="SDIO_Instance" value="SDIO2"/>
             <ParametersSub name="USBH_Instance" value="null"/>
-            <ParametersSub name="FF_CODE_PAGE" value="936"/>
             <ParametersSub name="FF_USE_LFN" value="2"/>
             <ParametersSub name="FF_LFN_UNICODE" value="1"/>
-            <ParametersSub name="FF_VOLUMES" value="2"/>
+            <ParametersSub name="FF_VOLUMES" value="1"/>
             <ParametersSub name="FF_FS_REENTRANT" value="1"/>
             <ParametersSub name="FF_SYNC_t" value="SemaphoreHandle_t"/>
         </Parameters>
@@ -187,7 +187,7 @@
             <ParametersGroup>
                 <ParametersSub name="TaskName" value="start_test_tasks"/>
                 <ParametersSub name="TaskPriority" value="0"/>
-                <ParametersSub name="TaskStackSize" value="128"/>
+                <ParametersSub name="TaskStackSize" value="512"/>
                 <ParametersSub name="TaskEntryFunction" value="start_or_test_f"/>
                 <ParametersSub name="TaskCodeGenerationOption" value="Default"/>
                 <ParametersSub name="TaskParameters" value="NULL"/>
@@ -271,9 +271,11 @@
     </NVIC>
     <GPIO>
         <Signal SignalName="GPIO_Input" PinName="PE2">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="KEY3_PE2"/>
         </Signal>
         <Signal SignalName="GPIO_Input" PinName="PE3">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="KEY4_PE3"/>
         </Signal>
         <Signal SignalName="GPIO_Input" PinName="PE4">
@@ -281,7 +283,6 @@
             <Parameters name="Label" value="TPA_FAULTZ_PE4"/>
         </Signal>
         <Signal SignalName="GPIO_Output" PinName="PE5">
-            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
             <Parameters name="Label" value="TPA_SDZ_PE5"/>
         </Signal>
         <Signal SignalName="GPIO_Output" PinName="PE6">
@@ -292,15 +293,19 @@
             <Parameters name="Label" value="SDIO2_TFCD_PC13"/>
         </Signal>
         <Signal SignalName="SDIO2_D0" PinName="PC0">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
             <Parameters name="Label" value="SDDIO2_TFD0_PC0"/>
         </Signal>
         <Signal SignalName="SDIO2_D1" PinName="PC1">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
             <Parameters name="Label" value="SDDIO2_TFD1_PC1"/>
         </Signal>
         <Signal SignalName="SDIO2_D2" PinName="PC2">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
             <Parameters name="Label" value="SDDIO2_TFD2_PC2"/>
         </Signal>
         <Signal SignalName="SDIO2_D3" PinName="PC3">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
             <Parameters name="Label" value="SDDIO2_TFD3_PC3"/>
         </Signal>
         <Signal SignalName="ADC1_IN0" PinName="PA0">
@@ -310,9 +315,11 @@
             <Parameters name="Label" value="BATV_ADC_PA1"/>
         </Signal>
         <Signal SignalName="SDIO2_CK" PinName="PA2">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
             <Parameters name="Label" value="SDDIO2_TFCLX_PA2"/>
         </Signal>
         <Signal SignalName="SDIO2_CMD" PinName="PA3">
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
             <Parameters name="Label" value="SDDIO2_TFCMD_PA3"/>
         </Signal>
         <Signal SignalName="I2S1_WS" PinName="PA4">
@@ -524,9 +531,11 @@
             <Parameters name="Label" value="TTS_RST_PB9"/>
         </Signal>
         <Signal SignalName="GPIO_Input" PinName="PE0">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="KEY1_PE0"/>
         </Signal>
         <Signal SignalName="GPIO_Input" PinName="PE1">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="KEY2_PE1"/>
         </Signal>
     </GPIO>

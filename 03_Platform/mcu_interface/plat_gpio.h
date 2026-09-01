@@ -15,10 +15,8 @@ extern "C"
 {
 #endif
 
-#include <stdint.h>
 #include "plat_error.h" /* platform error code header file. */
-
-typedef uint8_t plat_gpio_id_t;
+#include "plat_resource.h"
 
 typedef enum
 {

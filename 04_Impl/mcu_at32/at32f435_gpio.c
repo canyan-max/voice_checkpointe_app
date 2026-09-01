@@ -13,6 +13,8 @@
 #include "board_resources.h"
 #include "plat_gpio.h"
 /* define   -----------------------------------------------------------------*/
+#define AT32F435_GPIO_CFG_ENTRY(name) \
+    [BOARD_GPIO_##name] = {BOARD_GPIO_##name##_PORT, BOARD_GPIO_##name##_PIN}
 
 /* typedef ------------------------------------------------------------------*/
 typedef struct AT32F435_GPIO_CFG_T
@@ -25,36 +27,53 @@ typedef struct AT32F435_GPIO_CFG_T
 
 static const at32f435_gpio_cfg_t gpio_cfg[BOARD_GPIO_RESOURCE_NUM] =
 {
-    [BOARD_GPIO_SW3] =
-    {
-        BOARD_GPIO_SW3_PORT,
-        BOARD_GPIO_SW3_PIN
-    },
-    [BOARD_GPIO_SW4] =
-    {
-        BOARD_GPIO_SW4_PORT,
-        BOARD_GPIO_SW4_PIN
-    },
-    [BOARD_GPIO_LED3] =
-    {
-        BOARD_GPIO_LED3_PORT,
-        BOARD_GPIO_LED3_PIN
-    },
-    [BOARD_GPIO_LED4] =
-    {
-        BOARD_GPIO_LED4_PORT,
-        BOARD_GPIO_LED4_PIN
-    },
-    [BOARD_GPIO_SD_CARD_DET] =
-    {
-        BOARD_GPIO_SD_CARD_DET_PORT,
-        BOARD_GPIO_SD_CARD_DET_PIN
-    }
+    /* GPIO outputs */
+    AT32F435_GPIO_CFG_ENTRY(PIR_POWER),
+    AT32F435_GPIO_CFG_ENTRY(E27_POWEREN),
+    AT32F435_GPIO_CFG_ENTRY(LED_OUT_B),
+    AT32F435_GPIO_CFG_ENTRY(LED_OUT_R),
+    AT32F435_GPIO_CFG_ENTRY(LED_POWER_CS),
+    AT32F435_GPIO_CFG_ENTRY(ALARM_OUT),
+    AT32F435_GPIO_CFG_ENTRY(TTS_RST),
+    AT32F435_GPIO_CFG_ENTRY(TPA_SDZ),
+    AT32F435_GPIO_CFG_ENTRY(TPA_MUTE),
+    AT32F435_GPIO_CFG_ENTRY(E27_RELOAD),
+    AT32F435_GPIO_CFG_ENTRY(E27_RESET),
+    AT32F435_GPIO_CFG_ENTRY(LED1_REMOTE),
+    AT32F435_GPIO_CFG_ENTRY(LED2_UPDATA),
+    AT32F435_GPIO_CFG_ENTRY(LED3_BRCAT),
+    AT32F435_GPIO_CFG_ENTRY(LED4_RUN),
+    AT32F435_GPIO_CFG_ENTRY(HUB_A),
+    AT32F435_GPIO_CFG_ENTRY(HUB_B),
+    AT32F435_GPIO_CFG_ENTRY(HUB_C),
+    AT32F435_GPIO_CFG_ENTRY(HUB_D),
+    AT32F435_GPIO_CFG_ENTRY(HUB_E),
+    AT32F435_GPIO_CFG_ENTRY(HUB_LAT),
+    AT32F435_GPIO_CFG_ENTRY(HUB_OE245),
+    AT32F435_GPIO_CFG_ENTRY(HUB_R1),
+    AT32F435_GPIO_CFG_ENTRY(HUB_G1),
+    AT32F435_GPIO_CFG_ENTRY(HUB_B1),
+    AT32F435_GPIO_CFG_ENTRY(HUB_R2),
+    AT32F435_GPIO_CFG_ENTRY(HUB_G2),
+    AT32F435_GPIO_CFG_ENTRY(HUB_B2),
+    AT32F435_GPIO_CFG_ENTRY(HUB_SCK),
+
+    /* GPIO inputs */
+    AT32F435_GPIO_CFG_ENTRY(TTS_R_B),
+    AT32F435_GPIO_CFG_ENTRY(PIR_IN),
+    AT32F435_GPIO_CFG_ENTRY(ALARM_IN),
+    AT32F435_GPIO_CFG_ENTRY(TPA_FAULTZ),
+    AT32F435_GPIO_CFG_ENTRY(KEY1),
+    AT32F435_GPIO_CFG_ENTRY(KEY2),
+    AT32F435_GPIO_CFG_ENTRY(KEY3),
+    AT32F435_GPIO_CFG_ENTRY(KEY4)
 };
 
 _Static_assert((sizeof(gpio_cfg) / sizeof(gpio_cfg[0])) ==
                    BOARD_GPIO_RESOURCE_NUM,
                "GPIO resource table size mismatch");
+
+#undef AT32F435_GPIO_CFG_ENTRY
 
 /* private  functions  ------------------------------------------------------*/
 static const at32f435_gpio_cfg_t *at32f435_gpio_get_cfg(plat_gpio_id_t id)

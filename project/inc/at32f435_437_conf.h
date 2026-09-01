@@ -52,7 +52,7 @@ extern "C" {
 
 /* module define -------------------------------------------------------------*/
 #define CRM_MODULE_ENABLED
-/*#define TMR_MODULE_ENABLED----------------------*/
+#define TMR_MODULE_ENABLED
 /*#define ERTC_MODULE_ENABLED---------------------*/
 #define GPIO_MODULE_ENABLED
 #define I2C_MODULE_ENABLED

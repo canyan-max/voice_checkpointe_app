@@ -21,11 +21,10 @@ extern "C"
 /* Includes -----------------------------------------------------------------*/
 #include <stdint.h>     /* stdint lib header file. */
 #include "plat_error.h" /* platform error code header file. */
+#include "plat_resource.h"
 /* define -------------------------------------------------------------------*/
 
 /* typedef ------------------------------------------------------------------*/
-typedef uint8_t plat_uart_id_t;
-
 typedef enum
 {
     PLAT_UART_RX_EVENT_NONE     = 0U,

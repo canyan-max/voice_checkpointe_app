@@ -7,7 +7,20 @@
 # ============================================
 #UV="/d/Soft/KEIL5/UV4/UV4.exe" #home 
 UV="/d/software_config/keil_soft/keil_app/UV4/UV4.exe" #company
-PROJ="project/MDK_V5/18_AT32F435VGT7_Decode.uvprojx"
+
+shopt -s nullglob
+PROJECTS=(project/MDK_V5/*.uvprojx)
+
+if [ ${#PROJECTS[@]} -eq 0 ]; then
+    echo "Error: No .uvprojx project found in project/MDK_V5."
+    exit 1
+elif [ ${#PROJECTS[@]} -gt 1 ]; then
+    echo "Error: Multiple .uvprojx projects found in project/MDK_V5:"
+    printf '  %s\n' "${PROJECTS[@]}"
+    exit 1
+fi
+
+PROJ="${PROJECTS[0]}"
 
 BUILD_LOG="$PWD/build_log.txt"
 FLASH_LOG="$PWD/flash_log.txt"

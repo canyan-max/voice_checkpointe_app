@@ -11,6 +11,10 @@
 
 /* private includes ----------------------------------------------------------*/
 /* add user code begin private includes */
+#include "ff.h"
+#include "diskio.h"
+#include "plat_log.h"
+#include <string.h>
 
 /* add user code end private includes */
 
@@ -21,6 +25,9 @@
 
 /* private define ------------------------------------------------------------*/
 /* add user code begin private define */
+#define START_TEST_TASK_STACK_WORDS       512U
+#define START_TEST_IDLE_PERIOD_MS         1000U
+#define START_TEST_SD_FILE_PATH           _T("0:/VOICE_SD_TEST.TXT")
 
 /* add user code end private define */
 
@@ -31,6 +38,11 @@
 
 /* private variables ---------------------------------------------------------*/
 /* add user code begin private variables */
+static FATFS start_test_sd_fatfs;
+static FIL start_test_sd_file;
+static char start_test_sd_read_buffer[64U];
+static const char start_test_sd_write_data[] =
+  "Voice checkpoint SD write/read test OK.\r\n";
 
 /* add user code end private variables */
 
@@ -134,7 +146,7 @@ void freertos_task_create(void)
   /* create start_test_tasks task */
   xTaskCreate(start_or_test_f,
               "start_test_tasks",
-              128,
+              512,
               NULL,
               0,
               &start_test_tasks_handle);
@@ -175,11 +187,14 @@ void wk_freertos_init(void)
 void start_or_test_f(void *pvParameters)
 {
   /* add user code begin start_or_test_f 0 */
+  platform_err_t log_ret;
+  (void)pvParameters;
 
   /* add user code end start_or_test_f 0 */
 
   /* add user code begin start_or_test_f 2 */
-
+  log_ret = plat_log_init();
+  plat_log_i("SD polling read/write test start, log_init=%d", (int32_t)log_ret);
   /* add user code end start_or_test_f 2 */
 
   /* Infinite loop */
@@ -187,7 +202,7 @@ void start_or_test_f(void *pvParameters)
   {
   /* add user code begin start_or_test_f 1 */
 
-    vTaskDelay(1);
+    vTaskDelay(pdMS_TO_TICKS(START_TEST_IDLE_PERIOD_MS));
 
   /* add user code end start_or_test_f 1 */
   }

@@ -17,12 +17,11 @@ extern "C"
 /* Includes -----------------------------------------------------------------*/
 #include <stdint.h>
 #include "plat_error.h"
+#include "plat_resource.h"
 
 /* define -------------------------------------------------------------------*/
 
 /* typedef ------------------------------------------------------------------*/
-typedef uint8_t plat_i2s_id_t;
-
 typedef enum PLAT_I2S_EVENT_T
 {
     PLAT_I2S_EVENT_NONE        = 0U,

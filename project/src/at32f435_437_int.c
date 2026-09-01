@@ -190,8 +190,6 @@ void SysTick_Handler(void)
 
   /* add user code end SysTick_IRQ 0 */
 
-  wk_timebase_handler();
-
 #if (INCLUDE_xTaskGetSchedulerState == 1 )
   if (xTaskGetSchedulerState() != taskSCHEDULER_NOT_STARTED)
   {
@@ -436,6 +434,24 @@ void DMA1_Channel3_IRQHandler(void)
   /* add user code begin DMA1_Channel3_IRQ 1 */
 
   /* add user code end DMA1_Channel3_IRQ 1 */
+}
+
+/**
+  * @brief  this function handles TMR20 overflow handler.
+  * @param  none
+  * @retval none
+  */
+void TMR20_OVF_IRQHandler(void)
+{
+  /* add user code begin TMR20_OVF_IRQ 0 */
+
+  /* add user code end TMR20_OVF_IRQ 0 */
+
+  wk_timebase_handler();
+
+  /* add user code begin TMR20_OVF_IRQ 1 */
+
+  /* add user code end TMR20_OVF_IRQ 1 */
 }
 
 /* add user code begin 1 */

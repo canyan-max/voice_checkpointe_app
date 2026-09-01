@@ -51,14 +51,9 @@ void wk_gpio_config(void)
 
   /* gpio input config */
   gpio_init_struct.gpio_mode = GPIO_MODE_INPUT;
-  gpio_init_struct.gpio_pins = KEY3_PE2_PIN | KEY4_PE3_PIN | KEY1_PE0_PIN | KEY2_PE1_PIN;
-  gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
-  gpio_init(GPIOE, &gpio_init_struct);
-
-  gpio_init_struct.gpio_mode = GPIO_MODE_INPUT;
-  gpio_init_struct.gpio_pins = TPA_FAULTZ_PE4_PIN;
+  gpio_init_struct.gpio_pins = KEY3_PE2_PIN | KEY4_PE3_PIN | TPA_FAULTZ_PE4_PIN | KEY1_PE0_PIN | KEY2_PE1_PIN;
   gpio_init_struct.gpio_pull = GPIO_PULL_UP;
-  gpio_init(TPA_FAULTZ_PE4_GPIO_PORT, &gpio_init_struct);
+  gpio_init(GPIOE, &gpio_init_struct);
 
   gpio_init_struct.gpio_mode = GPIO_MODE_INPUT;
   gpio_init_struct.gpio_pins = SDIO2_TFCD_PC13_PIN;
@@ -81,10 +76,9 @@ void wk_gpio_config(void)
   gpio_init(TTS_R_B_PB8_GPIO_PORT, &gpio_init_struct);
 
   /* gpio output config */
-  gpio_bits_set(GPIOE, TPA_SDZ_PE5_PIN | TPA_MUTE_PE6_PIN | LED1_REMOTE_PE12_PIN | LED2_UPDATA_PE13_PIN | LED3_BRCAT_PE14_PIN | 
-                  LED4_RUN_PE15_PIN);
+  gpio_bits_reset(GPIOE, TPA_SDZ_PE5_PIN | E27_RELOAD_PE7_PIN | E27_RESET_PE8_PIN | DEBUG_SCOPE_PE9_PIN);
+  gpio_bits_set(GPIOE, TPA_MUTE_PE6_PIN | LED1_REMOTE_PE12_PIN | LED2_UPDATA_PE13_PIN | LED3_BRCAT_PE14_PIN | LED4_RUN_PE15_PIN);
   gpio_bits_reset(GPIOA, PIR_POWER_PA5_PIN | E27_POWEREN_PA11_PIN | RS485_RXEN_PA12_PIN);
-  gpio_bits_reset(GPIOE, E27_RELOAD_PE7_PIN | E27_RESET_PE8_PIN | DEBUG_SCOPE_PE9_PIN);
   gpio_bits_reset(GPIOD, HUB_R1_PD8_PIN | HUB_G1_PD9_PIN | HUB_B1_PD10_PIN | HUB_R2_PD11_PIN | HUB_G2_PD12_PIN | 
                   HUB_B2_PD13_PIN | HUB_SCK_PD15_PIN | HUB_A_PD0_PIN | HUB_B_PD1_PIN | HUB_C_PD2_PIN | 
                   HUB_D_PD3_PIN | HUB_E_PD4_PIN | HUB_LAT_PD5_PIN);

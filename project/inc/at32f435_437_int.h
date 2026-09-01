@@ -71,6 +71,7 @@ void USART3_IRQHandler(void);
 void DMA1_Channel1_IRQHandler(void);
 void DMA1_Channel2_IRQHandler(void);
 void DMA1_Channel3_IRQHandler(void);
+void TMR20_OVF_IRQHandler(void);
 
 /* add user code begin exported functions */
 

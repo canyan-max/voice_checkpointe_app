@@ -177,7 +177,7 @@ sd_error_status_type sd_init(void)
   if((status == SD_OK) || (card_type == SDIO_MULTIMEDIA_CARD))
   {
 	/* configure param */
-	sdio_clock_config(SDIOx, 0, SDIO_CLOCK_EDGE_RISING);
+	sdio_clock_config(SDIOx, 10, SDIO_CLOCK_EDGE_RISING);
 	sdio_power_saving_mode_enable(SDIOx, FALSE);
 	sdio_flow_control_enable(SDIOx, FALSE);
 	sdio_clock_bypass(SDIOx, FALSE);

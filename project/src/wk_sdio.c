@@ -51,7 +51,7 @@ void wk_sdio2_init(void)
 
   /* configure the D0 pin */
   gpio_pin_mux_config(SDDIO2_TFD0_PC0_GPIO_PORT, GPIO_PINS_SOURCE0, GPIO_MUX_10);
-  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_MODERATE;
+  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_STRONGER;
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_pins = SDDIO2_TFD0_PC0_PIN;
@@ -60,7 +60,7 @@ void wk_sdio2_init(void)
 
   /* configure the D1 pin */
   gpio_pin_mux_config(SDDIO2_TFD1_PC1_GPIO_PORT, GPIO_PINS_SOURCE1, GPIO_MUX_10);
-  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_MODERATE;
+  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_STRONGER;
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_pins = SDDIO2_TFD1_PC1_PIN;
@@ -69,7 +69,7 @@ void wk_sdio2_init(void)
 
   /* configure the D2 pin */
   gpio_pin_mux_config(SDDIO2_TFD2_PC2_GPIO_PORT, GPIO_PINS_SOURCE2, GPIO_MUX_10);
-  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_MODERATE;
+  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_STRONGER;
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_pins = SDDIO2_TFD2_PC2_PIN;
@@ -78,7 +78,7 @@ void wk_sdio2_init(void)
 
   /* configure the D3 pin */
   gpio_pin_mux_config(SDDIO2_TFD3_PC3_GPIO_PORT, GPIO_PINS_SOURCE3, GPIO_MUX_10);
-  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_MODERATE;
+  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_STRONGER;
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_pins = SDDIO2_TFD3_PC3_PIN;
@@ -87,7 +87,7 @@ void wk_sdio2_init(void)
 
   /* configure the CK pin */
   gpio_pin_mux_config(SDDIO2_TFCLX_PA2_GPIO_PORT, GPIO_PINS_SOURCE2, GPIO_MUX_10);
-  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_MODERATE;
+  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_STRONGER;
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_pins = SDDIO2_TFCLX_PA2_PIN;
@@ -96,7 +96,7 @@ void wk_sdio2_init(void)
 
   /* configure the CMD pin */
   gpio_pin_mux_config(SDDIO2_TFCMD_PA3_GPIO_PORT, GPIO_PINS_SOURCE3, GPIO_MUX_10);
-  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_MODERATE;
+  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_STRONGER;
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_pins = SDDIO2_TFCMD_PA3_PIN;
@@ -104,7 +104,7 @@ void wk_sdio2_init(void)
   gpio_init(SDDIO2_TFCMD_PA3_GPIO_PORT, &gpio_init_struct);
 
   /* configure param */
-  sdio_clock_config(SDIO2, 0, SDIO_CLOCK_EDGE_RISING);
+  sdio_clock_config(SDIO2, 10, SDIO_CLOCK_EDGE_RISING);
   sdio_power_saving_mode_enable(SDIO2, FALSE);
   sdio_flow_control_enable(SDIO2, FALSE);
   sdio_clock_bypass(SDIO2, FALSE);
