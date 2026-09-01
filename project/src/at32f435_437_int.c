@@ -31,6 +31,8 @@
 
 /* private includes ----------------------------------------------------------*/
 /* add user code begin private includes */
+#include "board_resources.h"
+#include "plat_i2s.h"
 
 /* add user code end private includes */
 
@@ -212,6 +214,7 @@ void SysTick_Handler(void)
 void EDMA_Stream1_IRQHandler(void)
 {
   /* add user code begin EDMA_Stream1_IRQ 0 */
+  plat_i2s_tx_dma_irq_handler(BOARD_I2S_AUDIO_OUTPUT);
 
   /* add user code end EDMA_Stream1_IRQ 0 */
 

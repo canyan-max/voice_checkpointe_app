@@ -11,11 +11,10 @@
 
 /* private includes ----------------------------------------------------------*/
 /* add user code begin private includes */
-#include "ff.h"
-#include "diskio.h"
 #include "plat_log.h"
-#include <string.h>
-
+#include "plat_gpio.h"
+#include "board_resources.h"
+#include "audio_playback_app.h"
 /* add user code end private includes */
 
 /* private typedef -----------------------------------------------------------*/
@@ -26,8 +25,8 @@
 /* private define ------------------------------------------------------------*/
 /* add user code begin private define */
 #define START_TEST_TASK_STACK_WORDS       512U
-#define START_TEST_IDLE_PERIOD_MS         1000U
-#define START_TEST_SD_FILE_PATH           _T("0:/VOICE_SD_TEST.TXT")
+#define START_TEST_KEY_POLL_MS             10U
+#define START_TEST_KEY_DEBOUNCE_SAMPLES    3U
 
 /* add user code end private define */
 
@@ -38,11 +37,6 @@
 
 /* private variables ---------------------------------------------------------*/
 /* add user code begin private variables */
-static FATFS start_test_sd_fatfs;
-static FIL start_test_sd_file;
-static char start_test_sd_read_buffer[64U];
-static const char start_test_sd_write_data[] =
-  "Voice checkpoint SD write/read test OK.\r\n";
 
 /* add user code end private variables */
 
@@ -146,7 +140,7 @@ void freertos_task_create(void)
   /* create start_test_tasks task */
   xTaskCreate(start_or_test_f,
               "start_test_tasks",
-              512,
+              START_TEST_TASK_STACK_WORDS,
               NULL,
               0,
               &start_test_tasks_handle);
@@ -188,21 +182,68 @@ void start_or_test_f(void *pvParameters)
 {
   /* add user code begin start_or_test_f 0 */
   platform_err_t log_ret;
+  platform_err_t app_ret;
+  platform_err_t gpio_ret;
+  platform_err_t play_ret;
+  plat_gpio_state_t key_sample;
+  plat_gpio_state_t key_candidate = PLAT_GPIO_SET;
+  plat_gpio_state_t key_stable = PLAT_GPIO_SET;
+  uint8_t key_stable_count = 0U;
+  uint8_t gpio_error_logged = 0U;
   (void)pvParameters;
 
   /* add user code end start_or_test_f 0 */
 
   /* add user code begin start_or_test_f 2 */
   log_ret = plat_log_init();
-  plat_log_i("SD polling read/write test start, log_init=%d", (int32_t)log_ret);
+  plat_log_i("Audio MP3 application start, log_init=%d", (int32_t)log_ret);
+  app_ret = audio_playback_app_init();
+  plat_log_i("Audio MP3 app init=%d, press KEY1 to play",
+             (int32_t)app_ret);
   /* add user code end start_or_test_f 2 */
 
   /* Infinite loop */
   while(1)
   {
   /* add user code begin start_or_test_f 1 */
+    gpio_ret = plat_gpio_read(BOARD_GPIO_KEY1, &key_sample);
+    if(PLATFORM_ERR_OK != gpio_ret)
+    {
+      if(0U == gpio_error_logged)
+      {
+        plat_log_e("KEY1 read failed, ret=%d", (int32_t)gpio_ret);
+        gpio_error_logged = 1U;
+      }
+      key_stable_count = 0U;
+    }
+    else
+    {
+      gpio_error_logged = 0U;
+      if(key_sample != key_candidate)
+      {
+        key_candidate = key_sample;
+        key_stable_count = 1U;
+      }
+      else if(key_stable_count < START_TEST_KEY_DEBOUNCE_SAMPLES)
+      {
+        key_stable_count++;
+      }
 
-    vTaskDelay(pdMS_TO_TICKS(START_TEST_IDLE_PERIOD_MS));
+      if((key_stable_count >= START_TEST_KEY_DEBOUNCE_SAMPLES) &&
+         (key_stable != key_candidate))
+      {
+        key_stable = key_candidate;
+        if((PLAT_GPIO_RESET == key_stable) &&
+           (PLATFORM_ERR_OK == app_ret))
+        {
+          play_ret = audio_playback_app_play_default();
+          plat_log_i("KEY1 pressed, MP3 play request=%d",
+                     (int32_t)play_ret);
+        }
+      }
+    }
+
+    vTaskDelay(pdMS_TO_TICKS(START_TEST_KEY_POLL_MS));
 
   /* add user code end start_or_test_f 1 */
   }

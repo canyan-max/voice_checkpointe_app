@@ -12,7 +12,7 @@
 #include "board_at32f435_binding.h"
 #include "board_resources.h"
 #include "plat_i2s.h"
-#include "wk_dma.h"
+#include "wk_edma.h"
 #include "wk_i2s.h"
 
 /* define   -----------------------------------------------------------------*/
@@ -21,7 +21,7 @@
 typedef struct AT32F435_I2S_CFG_T
 {
     spi_type         *p_i2s;
-    dma_channel_type *p_tx_dma;
+    edma_stream_type *p_tx_dma;
     uint32_t          dma_half_flag;
     uint32_t          dma_full_flag;
     uint32_t          dma_error_flag;
@@ -233,17 +233,17 @@ plat_i2s_start(plat_i2s_id_t id, uint16_t *p_samples, uint16_t sample_count)
     }
 
     p_cfg = &i2s_cfg[id];
-    dma_channel_enable(p_cfg->p_tx_dma, FALSE);
-    dma_flag_clear(p_cfg->dma_half_flag | p_cfg->dma_full_flag |
-                   p_cfg->dma_error_flag);
-    wk_dma_channel_config(p_cfg->p_tx_dma, (uint32_t)&p_cfg->p_i2s->dt,
+    edma_stream_enable(p_cfg->p_tx_dma, FALSE);
+    edma_flag_clear(p_cfg->dma_half_flag | p_cfg->dma_full_flag |
+                    p_cfg->dma_error_flag);
+    wk_edma_stream_config(p_cfg->p_tx_dma, (uint32_t)&p_cfg->p_i2s->dt,
                           (uint32_t)p_samples, sample_count);
     p_cfg->p_tx_dma->ctrl_bit.lm = TRUE;
-    dma_interrupt_enable(p_cfg->p_tx_dma, DMA_HDT_INT, TRUE);
-    dma_interrupt_enable(p_cfg->p_tx_dma, DMA_FDT_INT, TRUE);
-    dma_interrupt_enable(p_cfg->p_tx_dma, DMA_DTERR_INT, TRUE);
+    edma_interrupt_enable(p_cfg->p_tx_dma, EDMA_HDT_INT, TRUE);
+    edma_interrupt_enable(p_cfg->p_tx_dma, EDMA_FDT_INT, TRUE);
+    edma_interrupt_enable(p_cfg->p_tx_dma, EDMA_DTERR_INT, TRUE);
     i2s_is_started[id] = 1U;
-    dma_channel_enable(p_cfg->p_tx_dma, TRUE);
+    edma_stream_enable(p_cfg->p_tx_dma, TRUE);
     i2s_enable(p_cfg->p_i2s, TRUE);
     return PLATFORM_ERR_OK;
 }
@@ -257,13 +257,13 @@ platform_err_t plat_i2s_stop(plat_i2s_id_t id)
         return PLATFORM_ERR_PARAM;
     }
     p_cfg = &i2s_cfg[id];
-    dma_channel_enable(p_cfg->p_tx_dma, FALSE);
+    edma_stream_enable(p_cfg->p_tx_dma, FALSE);
     i2s_enable(p_cfg->p_i2s, FALSE);
-    dma_interrupt_enable(p_cfg->p_tx_dma, DMA_HDT_INT, FALSE);
-    dma_interrupt_enable(p_cfg->p_tx_dma, DMA_FDT_INT, FALSE);
-    dma_interrupt_enable(p_cfg->p_tx_dma, DMA_DTERR_INT, FALSE);
-    dma_flag_clear(p_cfg->dma_half_flag | p_cfg->dma_full_flag |
-                   p_cfg->dma_error_flag);
+    edma_interrupt_enable(p_cfg->p_tx_dma, EDMA_HDT_INT, FALSE);
+    edma_interrupt_enable(p_cfg->p_tx_dma, EDMA_FDT_INT, FALSE);
+    edma_interrupt_enable(p_cfg->p_tx_dma, EDMA_DTERR_INT, FALSE);
+    edma_flag_clear(p_cfg->dma_half_flag | p_cfg->dma_full_flag |
+                    p_cfg->dma_error_flag);
     i2s_is_started[id] = 0U;
     return PLATFORM_ERR_OK;
 }
@@ -288,19 +288,19 @@ void plat_i2s_tx_dma_irq_handler(plat_i2s_id_t id)
         return;
     }
     p_cfg = &i2s_cfg[id];
-    if(RESET != dma_interrupt_flag_get(p_cfg->dma_half_flag))
+    if(RESET != edma_interrupt_flag_get(p_cfg->dma_half_flag))
     {
-        dma_flag_clear(p_cfg->dma_half_flag);
+        edma_flag_clear(p_cfg->dma_half_flag);
         event = (plat_i2s_event_t)(event | PLAT_I2S_EVENT_TX_HALF);
     }
-    if(RESET != dma_interrupt_flag_get(p_cfg->dma_full_flag))
+    if(RESET != edma_interrupt_flag_get(p_cfg->dma_full_flag))
     {
-        dma_flag_clear(p_cfg->dma_full_flag);
+        edma_flag_clear(p_cfg->dma_full_flag);
         event = (plat_i2s_event_t)(event | PLAT_I2S_EVENT_TX_COMPLETE);
     }
-    if(RESET != dma_interrupt_flag_get(p_cfg->dma_error_flag))
+    if(RESET != edma_interrupt_flag_get(p_cfg->dma_error_flag))
     {
-        dma_flag_clear(p_cfg->dma_error_flag);
+        edma_flag_clear(p_cfg->dma_error_flag);
         event = (plat_i2s_event_t)(event | PLAT_I2S_EVENT_TX_ERROR);
     }
     if((PLAT_I2S_EVENT_NONE != event) && (NULL != i2s_callback[id]))

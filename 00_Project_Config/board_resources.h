@@ -62,11 +62,11 @@ extern "C"
 #define BOARD_GPIO_KEY4             ((plat_gpio_id_t)36U)
 #define BOARD_GPIO_RESOURCE_NUM     ((plat_gpio_id_t)37U)
 
-#define BOARD_UART_PROTOCOL     ((plat_uart_id_t)0U)
-#define BOARD_UART_RESOURCE_NUM ((plat_uart_id_t)1U)
+#define BOARD_UART_PROTOCOL         ((plat_uart_id_t)0U)
+#define BOARD_UART_RESOURCE_NUM     ((plat_uart_id_t)1U)
 
-#define BOARD_I2S_AUDIO_OUTPUT  ((plat_i2s_id_t)0U)
-#define BOARD_I2S_RESOURCE_NUM  ((plat_i2s_id_t)1U)
+#define BOARD_I2S_AUDIO_OUTPUT      ((plat_i2s_id_t)0U)
+#define BOARD_I2S_RESOURCE_NUM      ((plat_i2s_id_t)1U)
 
 /* typedef ------------------------------------------------------------------*/
 

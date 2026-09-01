@@ -18,6 +18,10 @@ extern "C"
 #include <stdint.h>
 #include "plat_error.h"
 
+
+
+#define UNMUTES_AMP         (0U)
+#define ISMUTES_AMP         (1U)
 /* function  ----------------------------------------------------------------*/
 /**
   * @brief            : Initialize the board amplifier in muted shutdown mode.

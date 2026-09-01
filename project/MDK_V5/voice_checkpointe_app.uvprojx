@@ -79,9 +79,9 @@
             <nStopB2X>0</nStopB2X>
           </BeforeMake>
           <AfterMake>
-            <RunUserProg1>0</RunUserProg1>
+            <RunUserProg1>1</RunUserProg1>
             <RunUserProg2>0</RunUserProg2>
-            <UserProg1Name></UserProg1Name>
+            <UserProg1Name>./keil5_disp_size_bar.exe</UserProg1Name>
             <UserProg2Name></UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>AT32F435VGT7, USE_STDPERIPH_DRIVER, USE_DEBUG_LOG</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\04_Impl\mcu_at32;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
+              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\04_Impl\mcu_at32;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -681,9 +681,53 @@
         </Group>
         <Group>
           <GroupName>01_App</GroupName>
+          <Files>
+            <File>
+              <FileName>audio_playback_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\01_App\audio_playback_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>audio_playback_app.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\01_App\audio_playback_app.h</FilePath>
+            </File>
+          </Files>
         </Group>
         <Group>
           <GroupName>02_Service</GroupName>
+          <Files>
+            <File>
+              <FileName>audio_data_source.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\02_Service\audio_data_source.h</FilePath>
+            </File>
+            <File>
+              <FileName>audio_pcm_block.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\02_Service\audio_pcm_block.h</FilePath>
+            </File>
+            <File>
+              <FileName>audio_player_service.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\02_Service\audio_player_service.c</FilePath>
+            </File>
+            <File>
+              <FileName>audio_player_service.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\02_Service\audio_player_service.h</FilePath>
+            </File>
+            <File>
+              <FileName>mp3_decoder_service.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\02_Service\mp3_decoder_service.c</FilePath>
+            </File>
+            <File>
+              <FileName>mp3_decoder_service.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\02_Service\mp3_decoder_service.h</FilePath>
+            </File>
+          </Files>
         </Group>
         <Group>
           <GroupName>03_Platform/bsp</GroupName>
