@@ -13,9 +13,11 @@
 /* add user code begin private includes */
 #include "plat_log.h"
 #include "plat_gpio.h"
+#include "plat_sys.h"
 #include "plat_uart.h"
 #include "board_resources.h"
 #include "audio_playback_app.h"
+#include "button.h"
 /* add user code end private includes */
 
 /* private typedef -----------------------------------------------------------*/
@@ -27,7 +29,10 @@
 /* add user code begin private define */
 #define START_TEST_TASK_STACK_WORDS       512U
 #define START_TEST_KEY_POLL_MS             10U
-#define START_TEST_KEY_DEBOUNCE_SAMPLES    3U
+#define START_TEST_KEY_DEBOUNCE_MS         30U
+#define START_TEST_KEY_LONG_PRESS_MS     1000U
+#define START_TEST_KEY_DOUBLE_CLICK_MS    300U
+#define START_TEST_BUTTON_COUNT             2U
 #define START_TEST_VTX316_SEND_TIMEOUT_MS 100U
 
 /* add user code end private define */
@@ -187,15 +192,25 @@ void start_or_test_f(void *pvParameters)
   platform_err_t app_ret;
   platform_err_t gpio_ret;
   platform_err_t play_ret;
+  button_status_t button_ret;
+  button_event_t button_event;
   plat_gpio_state_t key_sample;
-  plat_gpio_state_t key_candidate = PLAT_GPIO_SET;
-  plat_gpio_state_t key_stable = PLAT_GPIO_SET;
-  plat_gpio_state_t key2_candidate = PLAT_GPIO_SET;
-  plat_gpio_state_t key2_stable = PLAT_GPIO_SET;
-  uint8_t key_stable_count = 0U;
-  uint8_t key2_stable_count = 0U;
-  uint8_t gpio_error_logged = 0U;
-  uint8_t key2_gpio_error_logged = 0U;
+  uint32_t now_ms;
+  uint8_t button_index;
+  button_t buttons[START_TEST_BUTTON_COUNT];
+  uint8_t button_ready[START_TEST_BUTTON_COUNT] = {0U};
+  uint8_t gpio_error_logged[START_TEST_BUTTON_COUNT] = {0U};
+  static const plat_gpio_id_t button_gpio[START_TEST_BUTTON_COUNT] =
+  {
+    BOARD_GPIO_KEY1,
+    BOARD_GPIO_KEY2
+  };
+  static const button_timing_t button_timing =
+  {
+    START_TEST_KEY_DEBOUNCE_MS,
+    START_TEST_KEY_LONG_PRESS_MS,
+    START_TEST_KEY_DOUBLE_CLICK_MS
+  };
   static const uint8_t vtx316_test_frame[] =
   {
     0xFDU, 0x00U, 0x0AU, 0x01U, 0x01U,
@@ -211,87 +226,97 @@ void start_or_test_f(void *pvParameters)
   app_ret = audio_playback_app_init();
   plat_log_i("Audio MP3 app init=%d, KEY1=MP3, KEY2=VTX316",
              (int32_t)app_ret);
+
+  now_ms = plat_tick_get_ms();
+  for(button_index = 0U;
+      button_index < START_TEST_BUTTON_COUNT;
+      button_index++)
+  {
+    gpio_ret = plat_gpio_read(button_gpio[button_index], &key_sample);
+    if(PLATFORM_ERR_OK == gpio_ret)
+    {
+      button_ret = button_init(&buttons[button_index],
+                               &button_timing,
+                               (uint8_t)(PLAT_GPIO_RESET == key_sample),
+                               now_ms);
+      if(BUTTON_STATUS_OK == button_ret)
+      {
+        button_ready[button_index] = 1U;
+      }
+    }
+
+    if(0U == button_ready[button_index])
+    {
+      plat_log_e("KEY%d init failed", (int32_t)(button_index + 1U));
+    }
+  }
   /* add user code end start_or_test_f 2 */
 
   /* Infinite loop */
   while(1)
   {
   /* add user code begin start_or_test_f 1 */
-    gpio_ret = plat_gpio_read(BOARD_GPIO_KEY1, &key_sample);
-    if(PLATFORM_ERR_OK != gpio_ret)
+    now_ms = plat_tick_get_ms();
+    for(button_index = 0U;
+        button_index < START_TEST_BUTTON_COUNT;
+        button_index++)
     {
-      if(0U == gpio_error_logged)
+      if(0U == button_ready[button_index])
       {
-        plat_log_e("KEY1 read failed, ret=%d", (int32_t)gpio_ret);
-        gpio_error_logged = 1U;
-      }
-      key_stable_count = 0U;
-    }
-    else
-    {
-      gpio_error_logged = 0U;
-      if(key_sample != key_candidate)
-      {
-        key_candidate = key_sample;
-        key_stable_count = 1U;
-      }
-      else if(key_stable_count < START_TEST_KEY_DEBOUNCE_SAMPLES)
-      {
-        key_stable_count++;
+        continue;
       }
 
-      if((key_stable_count >= START_TEST_KEY_DEBOUNCE_SAMPLES) &&
-         (key_stable != key_candidate))
+      gpio_ret = plat_gpio_read(button_gpio[button_index], &key_sample);
+      if(PLATFORM_ERR_OK != gpio_ret)
       {
-        key_stable = key_candidate;
-        if((PLAT_GPIO_RESET == key_stable) &&
-           (PLATFORM_ERR_OK == app_ret))
+        if(0U == gpio_error_logged[button_index])
+        {
+          plat_log_e("KEY%d read failed, ret=%d",
+                     (int32_t)(button_index + 1U),
+                     (int32_t)gpio_ret);
+          gpio_error_logged[button_index] = 1U;
+        }
+        continue;
+      }
+      gpio_error_logged[button_index] = 0U;
+
+      button_ret = button_update(&buttons[button_index],
+                                 (uint8_t)(PLAT_GPIO_RESET == key_sample),
+                                 now_ms,
+                                 &button_event);
+      if(BUTTON_STATUS_OK != button_ret)
+      {
+        plat_log_e("KEY%d update failed, ret=%d",
+                   (int32_t)(button_index + 1U),
+                   (int32_t)button_ret);
+        button_ready[button_index] = 0U;
+        continue;
+      }
+
+      if(BUTTON_EVENT_PRESS != button_event)
+      {
+        continue;
+      }
+
+      if(0U == button_index)
+      {
+        if(PLATFORM_ERR_OK == app_ret)
         {
           play_ret = audio_playback_app_play_default();
           plat_log_i("KEY1 pressed, MP3 play request=%d",
                      (int32_t)play_ret);
         }
       }
-    }
+      else
+      {
+        platform_err_t vtx_ret;
 
-    gpio_ret = plat_gpio_read(BOARD_GPIO_KEY2, &key_sample);
-    if(PLATFORM_ERR_OK != gpio_ret)
-    {
-      if(0U == key2_gpio_error_logged)
-      {
-        plat_log_e("KEY2 read failed, ret=%d", (int32_t)gpio_ret);
-        key2_gpio_error_logged = 1U;
-      }
-      key2_stable_count = 0U;
-    }
-    else
-    {
-      key2_gpio_error_logged = 0U;
-      if(key_sample != key2_candidate)
-      {
-        key2_candidate = key_sample;
-        key2_stable_count = 1U;
-      }
-      else if(key2_stable_count < START_TEST_KEY_DEBOUNCE_SAMPLES)
-      {
-        key2_stable_count++;
-      }
-
-      if((key2_stable_count >= START_TEST_KEY_DEBOUNCE_SAMPLES) &&
-         (key2_stable != key2_candidate))
-      {
-        key2_stable = key2_candidate;
-        if(PLAT_GPIO_RESET == key2_stable)
-        {
-          platform_err_t vtx_ret;
-
-          vtx_ret = plat_uart_send(BOARD_UART_VTX316,
-                                   vtx316_test_frame,
-                                   (uint16_t)sizeof(vtx316_test_frame),
-                                   START_TEST_VTX316_SEND_TIMEOUT_MS);
-          plat_log_i("KEY2 pressed, VTX316 send ret=%d",
-                     (int32_t)vtx_ret);
-        }
+        vtx_ret = plat_uart_send(BOARD_UART_VTX316,
+                                 vtx316_test_frame,
+                                 (uint16_t)sizeof(vtx316_test_frame),
+                                 START_TEST_VTX316_SEND_TIMEOUT_MS);
+        plat_log_i("KEY2 pressed, VTX316 send ret=%d",
+                   (int32_t)vtx_ret);
       }
     }
 
