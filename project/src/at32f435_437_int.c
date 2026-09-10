@@ -33,6 +33,7 @@
 /* add user code begin private includes */
 #include "board_resources.h"
 #include "plat_i2s.h"
+#include "plat_uart.h"
 
 /* add user code end private includes */
 
@@ -255,7 +256,7 @@ void EDMA_Stream1_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
   /* add user code begin USART1_IRQ 0 */
-
+  plat_uart_rx_irq_handler(BOARD_UART_RS485);
   /* add user code end USART1_IRQ 0 */
 
   if(usart_interrupt_flag_get(USART1, USART_IDLEF_FLAG) != RESET)
@@ -279,7 +280,7 @@ void USART1_IRQHandler(void)
 void USART2_IRQHandler(void)
 {
   /* add user code begin USART2_IRQ 0 */
-
+  plat_uart_rx_irq_handler(BOARD_UART_REMOTE_4G);
   /* add user code end USART2_IRQ 0 */
 
   if(usart_interrupt_flag_get(USART2, USART_IDLEF_FLAG) != RESET)
@@ -303,7 +304,7 @@ void USART2_IRQHandler(void)
 void USART3_IRQHandler(void)
 {
   /* add user code begin USART3_IRQ 0 */
-
+  plat_uart_rx_irq_handler(BOARD_UART_VTX316);
   /* add user code end USART3_IRQ 0 */
 
   if(usart_interrupt_flag_get(USART3, USART_IDLEF_FLAG) != RESET)
@@ -327,7 +328,7 @@ void USART3_IRQHandler(void)
 void DMA1_Channel1_IRQHandler(void)
 {
   /* add user code begin DMA1_Channel1_IRQ 0 */
-
+  plat_uart_rx_dma_irq_handler(BOARD_UART_REMOTE_4G);
   /* add user code end DMA1_Channel1_IRQ 0 */
 
   if(dma_interrupt_flag_get(DMA1_FDT1_FLAG) != RESET)
@@ -367,7 +368,7 @@ void DMA1_Channel1_IRQHandler(void)
 void DMA1_Channel2_IRQHandler(void)
 {
   /* add user code begin DMA1_Channel2_IRQ 0 */
-
+  plat_uart_rx_dma_irq_handler(BOARD_UART_RS485);
   /* add user code end DMA1_Channel2_IRQ 0 */
 
   if(dma_interrupt_flag_get(DMA1_FDT2_FLAG) != RESET)
@@ -407,7 +408,7 @@ void DMA1_Channel2_IRQHandler(void)
 void DMA1_Channel3_IRQHandler(void)
 {
   /* add user code begin DMA1_Channel3_IRQ 0 */
-
+  plat_uart_rx_dma_irq_handler(BOARD_UART_VTX316);
   /* add user code end DMA1_Channel3_IRQ 0 */
 
   if(dma_interrupt_flag_get(DMA1_FDT3_FLAG) != RESET)

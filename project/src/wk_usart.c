@@ -50,13 +50,13 @@ void wk_usart1_init(void)
   /* add user code end usart1_init 1 */
 
   /* configure the TX pin */
-  gpio_pin_mux_config(UART1485_RX_PA9_GPIO_PORT, GPIO_PINS_SOURCE9, GPIO_MUX_7);
+  gpio_pin_mux_config(UART1485_TX_PA9_GPIO_PORT, GPIO_PINS_SOURCE9, GPIO_MUX_7);
   gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_MODERATE;
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
-  gpio_init_struct.gpio_pins = UART1485_RX_PA9_PIN;
+  gpio_init_struct.gpio_pins = UART1485_TX_PA9_PIN;
   gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
-  gpio_init(UART1485_RX_PA9_GPIO_PORT, &gpio_init_struct);
+  gpio_init(UART1485_TX_PA9_GPIO_PORT, &gpio_init_struct);
 
   /* configure the RX pin */
   gpio_pin_mux_config(UART1485_RX_PA10_GPIO_PORT, GPIO_PINS_SOURCE10, GPIO_MUX_7);

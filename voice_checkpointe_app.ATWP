@@ -24,9 +24,13 @@
         <Parameters>
             <ParametersSub name="EnableOrdinaryConversion" value="ENABLE"/>
             <ParametersSub name="OrdinaryTriggerSource" value="ADC_ORDINARY_TRIG_SOFTWARE"/>
+            <ParametersSub name="NbrOfOrdinarySequence" value="2"/>
             <ParametersSub name="Channel_OrdinarySequence_1" value="ADC_CHANNEL_0"/>
             <ParametersSub name="SamplingTime_OrdinarySequence_1" value="ADC_SAMPLETIME_47_5"/>
             <ParametersSub name="SamplingRate_OrdinarySequence_1" value="0.600"/>
+            <ParametersSub name="Channel_OrdinarySequence_2" value="ADC_CHANNEL_1"/>
+            <ParametersSub name="SamplingTime_OrdinarySequence_2" value="ADC_SAMPLETIME_47_5"/>
+            <ParametersSub name="SamplingRate_OrdinarySequence_2" value="0.600"/>
         </Parameters>
     </ADC1>
     <CRM>
@@ -447,7 +451,7 @@
             <Parameters name="Label" value="USART2_TX_PA8"/>
         </Signal>
         <Signal SignalName="USART1_TX" PinName="PA9">
-            <Parameters name="Label" value="UART1485_RX_PA9"/>
+            <Parameters name="Label" value="UART1485_TX_PA9"/>
         </Signal>
         <Signal SignalName="USART1_RX" PinName="PA10">
             <Parameters name="Label" value="UART1485_RX_PA10"/>

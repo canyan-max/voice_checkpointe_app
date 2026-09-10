@@ -43,6 +43,9 @@
 *.txt
 *.json
 
+# MCU资源分配表属于项目文档，必须纳入版本管理
+!99_Doc/voice_checkpoint_resouce_map.xlsx
+
 # 忽略 MDK-ARM 目录下的所有子文件夹（调试配置、RTE、编译输出等全部忽略）
 # MDK-ARM/*/
 project/MDK_V5/*/

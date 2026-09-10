@@ -42,18 +42,38 @@ typedef struct AT32F435_UART_CFG_T
 /* variables ----------------------------------------------------------------*/
 static const at32f435_uart_cfg_t uart_cfg[BOARD_UART_RESOURCE_NUM] =
 {
-    [BOARD_UART_PROTOCOL] =
+    [BOARD_UART_REMOTE_4G] =
     {
-        BOARD_UART_PROTOCOL_INSTANCE,
-        BOARD_UART_PROTOCOL_RX_DMA,
-        BOARD_UART_PROTOCOL_RX_DMA_GLOBAL,
-        BOARD_UART_PROTOCOL_RX_DMA_HALF,
-        BOARD_UART_PROTOCOL_RX_DMA_FULL,
-        BOARD_UART_PROTOCOL_RX_DMA_ERROR
+        BOARD_UART_REMOTE_4G_INSTANCE,
+        BOARD_UART_REMOTE_4G_RX_DMA,
+        BOARD_UART_REMOTE_4G_RX_DMA_GLOBAL,
+        BOARD_UART_REMOTE_4G_RX_DMA_HALF,
+        BOARD_UART_REMOTE_4G_RX_DMA_FULL,
+        BOARD_UART_REMOTE_4G_RX_DMA_ERROR
+    },
+    [BOARD_UART_RS485] =
+    {
+        BOARD_UART_RS485_INSTANCE,
+        BOARD_UART_RS485_RX_DMA,
+        BOARD_UART_RS485_RX_DMA_GLOBAL,
+        BOARD_UART_RS485_RX_DMA_HALF,
+        BOARD_UART_RS485_RX_DMA_FULL,
+        BOARD_UART_RS485_RX_DMA_ERROR
+    },
+    [BOARD_UART_VTX316] =
+    {
+        BOARD_UART_VTX316_INSTANCE,
+        BOARD_UART_VTX316_RX_DMA,
+        BOARD_UART_VTX316_RX_DMA_GLOBAL,
+        BOARD_UART_VTX316_RX_DMA_HALF,
+        BOARD_UART_VTX316_RX_DMA_FULL,
+        BOARD_UART_VTX316_RX_DMA_ERROR
     }
 };
 
-static uint32_t uart_rx_dma_storage[AT32F435_UART_RX_DMA_SIZE / sizeof(uint32_t)];
+static uint32_t uart_rx_dma_storage
+    [BOARD_UART_RESOURCE_NUM]
+    [AT32F435_UART_RX_DMA_SIZE / sizeof(uint32_t)];
 static at32f435_uart_rx_t uart_rx_table[BOARD_UART_RESOURCE_NUM];
 
 _Static_assert((sizeof(uart_cfg) / sizeof(uart_cfg[0])) ==
@@ -112,7 +132,7 @@ at32f435_uart_rx_sync(plat_uart_id_t id, uint16_t *p_write_size)
 {
     const at32f435_uart_cfg_t *p_cfg = &uart_cfg[id];
     at32f435_uart_rx_t *p_rx = &uart_rx_table[id];
-    uint8_t *p_dma_buf = (uint8_t *)uart_rx_dma_storage;
+    uint8_t *p_dma_buf = (uint8_t *)uart_rx_dma_storage[id];
     uint16_t dma_pos;
     uint16_t first_size;
     uint16_t second_size;
@@ -255,7 +275,7 @@ platform_err_t plat_uart_receive_start(plat_uart_id_t id,
     dma_flag_clear(p_cfg->rx_dma_global_flag);
     wk_dma_channel_config(p_cfg->p_rx_dma,
                           (uint32_t)&p_cfg->p_uart->dt,
-                          (uint32_t)uart_rx_dma_storage,
+                          (uint32_t)uart_rx_dma_storage[id],
                           AT32F435_UART_RX_DMA_SIZE);
     p_rx->dma_last_pos = 0U;
     p_rx->is_started = 1U;

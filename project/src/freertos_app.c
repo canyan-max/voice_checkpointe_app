@@ -13,6 +13,7 @@
 /* add user code begin private includes */
 #include "plat_log.h"
 #include "plat_gpio.h"
+#include "plat_uart.h"
 #include "board_resources.h"
 #include "audio_playback_app.h"
 /* add user code end private includes */
@@ -27,6 +28,7 @@
 #define START_TEST_TASK_STACK_WORDS       512U
 #define START_TEST_KEY_POLL_MS             10U
 #define START_TEST_KEY_DEBOUNCE_SAMPLES    3U
+#define START_TEST_VTX316_SEND_TIMEOUT_MS 100U
 
 /* add user code end private define */
 
@@ -188,8 +190,17 @@ void start_or_test_f(void *pvParameters)
   plat_gpio_state_t key_sample;
   plat_gpio_state_t key_candidate = PLAT_GPIO_SET;
   plat_gpio_state_t key_stable = PLAT_GPIO_SET;
+  plat_gpio_state_t key2_candidate = PLAT_GPIO_SET;
+  plat_gpio_state_t key2_stable = PLAT_GPIO_SET;
   uint8_t key_stable_count = 0U;
+  uint8_t key2_stable_count = 0U;
   uint8_t gpio_error_logged = 0U;
+  uint8_t key2_gpio_error_logged = 0U;
+  static const uint8_t vtx316_test_frame[] =
+  {
+    0xFDU, 0x00U, 0x0AU, 0x01U, 0x01U,
+    0xD3U, 0xEEU, 0xD2U, 0xF4U, 0xCCU, 0xECU, 0xCFU, 0xC2U
+  };
   (void)pvParameters;
 
   /* add user code end start_or_test_f 0 */
@@ -198,7 +209,7 @@ void start_or_test_f(void *pvParameters)
   log_ret = plat_log_init();
   plat_log_i("Audio MP3 application start, log_init=%d", (int32_t)log_ret);
   app_ret = audio_playback_app_init();
-  plat_log_i("Audio MP3 app init=%d, press KEY1 to play",
+  plat_log_i("Audio MP3 app init=%d, KEY1=MP3, KEY2=VTX316",
              (int32_t)app_ret);
   /* add user code end start_or_test_f 2 */
 
@@ -239,6 +250,47 @@ void start_or_test_f(void *pvParameters)
           play_ret = audio_playback_app_play_default();
           plat_log_i("KEY1 pressed, MP3 play request=%d",
                      (int32_t)play_ret);
+        }
+      }
+    }
+
+    gpio_ret = plat_gpio_read(BOARD_GPIO_KEY2, &key_sample);
+    if(PLATFORM_ERR_OK != gpio_ret)
+    {
+      if(0U == key2_gpio_error_logged)
+      {
+        plat_log_e("KEY2 read failed, ret=%d", (int32_t)gpio_ret);
+        key2_gpio_error_logged = 1U;
+      }
+      key2_stable_count = 0U;
+    }
+    else
+    {
+      key2_gpio_error_logged = 0U;
+      if(key_sample != key2_candidate)
+      {
+        key2_candidate = key_sample;
+        key2_stable_count = 1U;
+      }
+      else if(key2_stable_count < START_TEST_KEY_DEBOUNCE_SAMPLES)
+      {
+        key2_stable_count++;
+      }
+
+      if((key2_stable_count >= START_TEST_KEY_DEBOUNCE_SAMPLES) &&
+         (key2_stable != key2_candidate))
+      {
+        key2_stable = key2_candidate;
+        if(PLAT_GPIO_RESET == key2_stable)
+        {
+          platform_err_t vtx_ret;
+
+          vtx_ret = plat_uart_send(BOARD_UART_VTX316,
+                                   vtx316_test_frame,
+                                   (uint16_t)sizeof(vtx316_test_frame),
+                                   START_TEST_VTX316_SEND_TIMEOUT_MS);
+          plat_log_i("KEY2 pressed, VTX316 send ret=%d",
+                     (int32_t)vtx_ret);
         }
       }
     }
