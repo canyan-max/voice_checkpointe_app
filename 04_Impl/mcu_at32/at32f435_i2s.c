@@ -64,11 +64,19 @@ at32f435_i2s_rate_get(uint32_t                      sample_rate_hz,
         case 11025U:
             *p_rate = I2S_AUDIO_FREQUENCY_11_025K;
             break;
+        case 12000U:
+            /* The vendor driver accepts the numeric frequency value. */
+            *p_rate = (i2s_audio_sampling_freq_type)12000U;
+            break;
         case 16000U:
             *p_rate = I2S_AUDIO_FREQUENCY_16K;
             break;
         case 22050U:
             *p_rate = I2S_AUDIO_FREQUENCY_22_05K;
+            break;
+        case 24000U:
+            /* The vendor driver accepts the numeric frequency value. */
+            *p_rate = (i2s_audio_sampling_freq_type)24000U;
             break;
         case 32000U:
             *p_rate = I2S_AUDIO_FREQUENCY_32K;
