@@ -7,6 +7,7 @@
 - 当前只实现一路 MP3 播放，同一时刻只允许一个解码和播放会话。
 - 板上已验证 SD 卡 MP3 可经 minimp3 解码并通过 I2S/EDMA、CS4344 和 TPA3116 播放。
 - 已验证 44.1 kHz 播放完成，日志为 `underrun=0`。
+- 首次上电可能丢失语音开头；TPA3116 从系统初始化起保持使能且解除静音后，仍表现为只在首次冷启动播放丢开头，后续播放及等待 30 秒后播放均正常，初步指向 CS4344 冷启动。2026-09-10 新增单次诊断：播放器初始化时以 44.1 kHz 循环发送全零 PCM 500 ms 后停止 I2S；KEY1 正式播放仍无额外延迟，用于确认 CS4344 需要先送时钟和静音数据完成上电建立。
 - 当前全局只有一个 `mp3_decoder_service_t` 实例：`audio_app_decoder_service`。
 
 ### 数据链路和缓冲区职责
@@ -34,7 +35,7 @@ EDMA -> I2S -> CS4344 -> 模拟链路 -> TPA3116 -> 喇叭
 - 外部数据源不得直接写 `input_buffer`，只需实现统一的 `open/read/seek/close` 接口。
 - SD、QSPI、USB 切换时复用同一个解码器、输入缓存、PCM 块池和 EDMA 缓冲区，不为每种来源复制一整套音频缓存。
 - minimp3 每次向一个空闲 PCM 块解码；完成后送入 ready queue，播放任务复制到当前可写的 EDMA 半区，随后立即归还 PCM 块。
-- `audio_app_startup_silence_block` 只用于极短 MP3 在 EOF 时不足两个启动块的情况，为 EDMA 第二半区提供静音占位。
+- `audio_app_startup_silence_block` 当前只用于极短 MP3 在 EOF 时不足两个启动块的情况，为 EDMA 第二半区提供静音占位。
 
 ### 当前音频静态缓冲估算
 
@@ -50,15 +51,15 @@ EDMA -> I2S -> CS4344 -> 模拟链路 -> TPA3116 -> 喇叭
 
 ### 当前工程 SRAM 基线
 
-最近一次已记录的 Keil 编译结果：
+2026-09-02 将 FreeRTOS heap 从 128 KiB 调整为 64 KiB 后，Keil 编译结果：
 
 ```text
 RW-data =   1,232 B
-ZI-data = 213,896 B
+ZI-data = 148,360 B
 ```
 
-- RW + ZI 约 210 KiB，SRAM 总量为 384 KiB，链接层面尚余约 174 KiB。
-- FreeRTOS 的 128 KiB heap 已包含在 ZI 中；这是预留区域，不代表运行时已经全部使用。
+- RW + ZI 约 146.09 KiB，SRAM 总量为 384 KiB，链接层面尚余 243,624 B（约 237.91 KiB）。
+- FreeRTOS 的 64 KiB heap 已包含在 ZI 中；这是预留区域，不代表运行时已经全部使用。
 - 当前音频任务使用静态任务栈、静态队列和静态音频缓存，不会再从 FreeRTOS heap 重复分配这些空间。
 - 上述数值只是当前基线；每次加入通信、USB、QSPI 等模块后，应以新的 Keil map/size 结果为准。
 

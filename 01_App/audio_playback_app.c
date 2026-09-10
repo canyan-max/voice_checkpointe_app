@@ -28,7 +28,9 @@
 #define AUDIO_APP_PLAYER_PRIORITY             (6U)
 #define AUDIO_APP_DECODER_PRIORITY            (5U)
 #define AUDIO_APP_DECODER_WAIT_MS             (20U)
-#define AUDIO_APP_OUTPUT_STABILIZE_MS         (20U)
+#define AUDIO_APP_CS4344_WARMUP_MS             (500U)
+#define AUDIO_APP_CS4344_WARMUP_RATE_HZ        (44100U)
+#define AUDIO_APP_CS4344_WARMUP_SESSION_ID     (UINT32_MAX)
 
 #define AUDIO_APP_PLAYER_NOTIFY_COMMAND       (1UL << 0)
 #define AUDIO_APP_PLAYER_NOTIFY_PCM_READY     (1UL << 1)
@@ -94,6 +96,7 @@ static QueueHandle_t audio_app_player_command_queue;
 static QueueHandle_t audio_app_decode_command_queue;
 static TaskHandle_t  audio_app_player_task_handle;
 static TaskHandle_t  audio_app_decoder_task_handle;
+static volatile uint8_t audio_app_ignore_output_events;
 
 static StaticQueue_t audio_app_free_queue_control;
 static StaticQueue_t audio_app_ready_queue_control;
@@ -122,6 +125,7 @@ static audio_data_status_t audio_app_fatfs_seek(void    *p_context,
                                                 uint32_t offset);
 static void audio_app_fatfs_close(void *p_context);
 static void audio_app_output_callback(bsp_audio_output_event_t event);
+static platform_err_t audio_app_cs4344_warmup(void);
 static void audio_app_player_task(void *p_parameter);
 static void audio_app_decoder_task(void *p_parameter);
 
@@ -239,6 +243,11 @@ static void audio_app_output_callback(bsp_audio_output_event_t event)
     BaseType_t higher_priority_task_woken = pdFALSE;
     uint32_t notify_bits = 0U;
 
+    if(0U != audio_app_ignore_output_events)
+    {
+        return;
+    }
+
     if(0U != ((uint32_t)event &
               (uint32_t)BSP_AUDIO_OUTPUT_EVENT_FIRST_HALF_WRITABLE))
     {
@@ -263,6 +272,40 @@ static void audio_app_output_callback(bsp_audio_output_event_t event)
                                  &higher_priority_task_woken);
         portYIELD_FROM_ISR(higher_priority_task_woken);
     }
+}
+
+static platform_err_t audio_app_cs4344_warmup(void)
+{
+    platform_err_t ret;
+    platform_err_t stop_ret;
+
+    memset(&audio_app_startup_silence_block,
+           0,
+           sizeof(audio_app_startup_silence_block));
+    audio_app_startup_silence_block.session_id =
+        AUDIO_APP_CS4344_WARMUP_SESSION_ID;
+    audio_app_startup_silence_block.sample_rate_hz =
+        AUDIO_APP_CS4344_WARMUP_RATE_HZ;
+
+    ret = audio_player_service_prepare(&audio_app_player_service,
+                                       AUDIO_APP_CS4344_WARMUP_SESSION_ID);
+    if(PLATFORM_ERR_OK != ret)
+    {
+        return ret;
+    }
+
+    audio_app_ignore_output_events = 1U;
+    ret = audio_player_service_start(&audio_app_player_service,
+                                     &audio_app_startup_silence_block,
+                                     &audio_app_startup_silence_block);
+    if(PLATFORM_ERR_OK == ret)
+    {
+        vTaskDelay(pdMS_TO_TICKS(AUDIO_APP_CS4344_WARMUP_MS));
+    }
+    stop_ret = audio_player_service_stop(&audio_app_player_service);
+    audio_app_ignore_output_events = 0U;
+
+    return (PLATFORM_ERR_OK != ret) ? ret : stop_ret;
 }
 
 static void audio_app_block_return(audio_pcm_block_t *p_block)
@@ -372,12 +415,6 @@ static void audio_app_player_start_if_ready(uint8_t decoder_eof)
     plat_log_i("Audio MP3 output start ret=%d, rate=%lu",
                (int32_t)ret,
                (unsigned long)audio_app_player_service.sample_rate_hz);
-    if(PLATFORM_ERR_OK == ret)
-    {
-        vTaskDelay(pdMS_TO_TICKS(AUDIO_APP_OUTPUT_STABILIZE_MS));
-        ret = audio_player_service_unmute(&audio_app_player_service);
-        plat_log_i("Audio MP3 unmute ret=%d", (int32_t)ret);
-    }
     if(PLATFORM_ERR_OK != ret)
     {
         audio_app_player_stop(1U);
@@ -424,6 +461,13 @@ static void audio_app_player_task(void *p_parameter)
     ret = audio_player_service_init(&audio_app_player_service,
                                     audio_app_output_callback);
     plat_log_i("Audio player service init ret=%d", (int32_t)ret);
+    if(PLATFORM_ERR_OK == ret)
+    {
+        ret = audio_app_cs4344_warmup();
+        plat_log_i("Audio CS4344 silent warmup %lu ms ret=%d",
+                   (unsigned long)AUDIO_APP_CS4344_WARMUP_MS,
+                   (int32_t)ret);
+    }
 
     for(;;)
     {

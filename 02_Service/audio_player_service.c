@@ -76,7 +76,8 @@ platform_err_t audio_player_service_init(
     }
     if(PLATFORM_ERR_OK == ret)
     {
-        ret = bsp_audio_amplifier_mute_set(ISMUTES_AMP);
+        /* Diagnostic: keep TPA3116 unmuted from system initialization. */
+        ret = bsp_audio_amplifier_mute_set(UNMUTES_AMP);
     }
     p_service->state = (PLATFORM_ERR_OK == ret) ?
                        AUDIO_PLAYER_SERVICE_STATE_IDLE :
@@ -104,7 +105,7 @@ platform_err_t audio_player_service_prepare(
     p_service->half_has_audio[1] = 0U;
     memset(p_service->dma_samples, 0, sizeof(p_service->dma_samples));
     p_service->state = AUDIO_PLAYER_SERVICE_STATE_PREPARING;
-    return bsp_audio_amplifier_mute_set(ISMUTES_AMP);
+    return PLATFORM_ERR_OK;
 }
 
 platform_err_t audio_player_service_start(
@@ -150,7 +151,11 @@ platform_err_t audio_player_service_start(
             p_service->dma_samples,
             (uint16_t)AUDIO_PLAYER_DMA_SAMPLE_COUNT);
     }
-    if(PLATFORM_ERR_OK != ret)
+    if(PLATFORM_ERR_OK == ret)
+    {
+        p_service->state = AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344;
+    }
+    else
     {
         p_service->state = AUDIO_PLAYER_SERVICE_STATE_ERROR;
     }
@@ -168,11 +173,7 @@ platform_err_t audio_player_service_unmute(
         return PLATFORM_ERR_PARAM;
     }
     ret = bsp_audio_amplifier_mute_set(UNMUTES_AMP);
-    if(PLATFORM_ERR_OK == ret)
-    {
-        p_service->state = AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344;
-    }
-    else
+    if(PLATFORM_ERR_OK != ret)
     {
         p_service->state = AUDIO_PLAYER_SERVICE_STATE_ERROR;
     }
@@ -212,7 +213,6 @@ platform_err_t audio_player_service_refill(
 
 platform_err_t audio_player_service_stop(audio_player_service_t *p_service)
 {
-    platform_err_t mute_ret;
     platform_err_t output_ret;
 
     if(NULL == p_service)
@@ -224,12 +224,11 @@ platform_err_t audio_player_service_stop(audio_player_service_t *p_service)
         return PLATFORM_ERR_OK;
     }
 
-    mute_ret = bsp_audio_amplifier_mute_set(ISMUTES_AMP);
     output_ret = bsp_audio_output_stream_stop();
     p_service->state = AUDIO_PLAYER_SERVICE_STATE_IDLE;
     p_service->half_has_audio[0] = 0U;
     p_service->half_has_audio[1] = 0U;
-    return (PLATFORM_ERR_OK != mute_ret) ? mute_ret : output_ret;
+    return output_ret;
 }
 
 platform_err_t audio_player_service_emergency_set(

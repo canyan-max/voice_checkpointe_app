@@ -178,7 +178,7 @@
             <ParametersSub name="MCU_SRAM_SIZE" value="393216"/>
             <ParametersSub name="configCPU_CLOCK_HZ" value="144000000"/>
             <ParametersSub name="configUSE_RECURSIVE_MUTEXES" value="1"/>
-            <ParametersSub name="TOTAL_HEAP_SIZE" value="131072"/>
+            <ParametersSub name="TOTAL_HEAP_SIZE" value="65536"/>
             <ParametersSub name="USE_IDLE_HOOK" value="1"/>
             <ParametersSub name="USE_TICK_HOOK" value="1"/>
             <ParametersSub name="CHECK_FOR_STACK_OVERFLOW" value="1"/>

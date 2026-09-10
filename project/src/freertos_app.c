@@ -140,7 +140,7 @@ void freertos_task_create(void)
   /* create start_test_tasks task */
   xTaskCreate(start_or_test_f,
               "start_test_tasks",
-              START_TEST_TASK_STACK_WORDS,
+              512,
               NULL,
               0,
               &start_test_tasks_handle);
