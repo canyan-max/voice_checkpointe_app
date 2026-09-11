@@ -14,7 +14,6 @@
 #include "plat_log.h"
 #include "plat_gpio.h"
 #include "plat_sys.h"
-#include "plat_uart.h"
 #include "board_resources.h"
 #include "audio_playback_app.h"
 #include "button.h"
@@ -32,8 +31,7 @@
 #define START_TEST_KEY_DEBOUNCE_MS         30U
 #define START_TEST_KEY_LONG_PRESS_MS     1000U
 #define START_TEST_KEY_DOUBLE_CLICK_MS    300U
-#define START_TEST_BUTTON_COUNT             2U
-#define START_TEST_VTX316_SEND_TIMEOUT_MS 100U
+#define START_TEST_BUTTON_COUNT             3U
 
 /* add user code end private define */
 
@@ -197,13 +195,15 @@ void start_or_test_f(void *pvParameters)
   plat_gpio_state_t key_sample;
   uint32_t now_ms;
   uint8_t button_index;
+  uint8_t emergency_active = 0U;
   button_t buttons[START_TEST_BUTTON_COUNT];
   uint8_t button_ready[START_TEST_BUTTON_COUNT] = {0U};
   uint8_t gpio_error_logged[START_TEST_BUTTON_COUNT] = {0U};
   static const plat_gpio_id_t button_gpio[START_TEST_BUTTON_COUNT] =
   {
     BOARD_GPIO_KEY1,
-    BOARD_GPIO_KEY2
+    BOARD_GPIO_KEY2,
+    BOARD_GPIO_KEY3
   };
   static const button_timing_t button_timing =
   {
@@ -211,9 +211,8 @@ void start_or_test_f(void *pvParameters)
     START_TEST_KEY_LONG_PRESS_MS,
     START_TEST_KEY_DOUBLE_CLICK_MS
   };
-  static const uint8_t vtx316_test_frame[] =
+  static const uint8_t voice_synthesis_test_text[] =
   {
-    0xFDU, 0x00U, 0x0AU, 0x01U, 0x01U,
     0xD3U, 0xEEU, 0xD2U, 0xF4U, 0xCCU, 0xECU, 0xCFU, 0xC2U
   };
   (void)pvParameters;
@@ -224,7 +223,7 @@ void start_or_test_f(void *pvParameters)
   log_ret = plat_log_init();
   plat_log_i("Audio MP3 application start, log_init=%d", (int32_t)log_ret);
   app_ret = audio_playback_app_init();
-  plat_log_i("Audio MP3 app init=%d, KEY1=MP3, KEY2=VTX316",
+  plat_log_i("Audio app init=%d, KEY1=MP3, KEY2=VTX316, KEY3=emergency",
              (int32_t)app_ret);
 
   now_ms = plat_tick_get_ms();
@@ -303,20 +302,35 @@ void start_or_test_f(void *pvParameters)
         if(PLATFORM_ERR_OK == app_ret)
         {
           play_ret = audio_playback_app_play_default();
-          plat_log_i("KEY1 pressed, MP3 play request=%d",
+          plat_log_i("KEY1 pressed, MP3 request enqueue ret=%d",
                      (int32_t)play_ret);
         }
       }
-      else
+      else if(1U == button_index)
       {
         platform_err_t vtx_ret;
 
-        vtx_ret = plat_uart_send(BOARD_UART_VTX316,
-                                 vtx316_test_frame,
-                                 (uint16_t)sizeof(vtx316_test_frame),
-                                 START_TEST_VTX316_SEND_TIMEOUT_MS);
-        plat_log_i("KEY2 pressed, VTX316 send ret=%d",
+        vtx_ret = audio_playback_app_voice_speak(
+            BSP_VOICE_SYNTHESIS_ENCODING_GBK,
+            voice_synthesis_test_text,
+            (uint16_t)sizeof(voice_synthesis_test_text));
+        plat_log_i("KEY2 pressed, VTX316 request enqueue ret=%d",
                    (int32_t)vtx_ret);
+      }
+      else
+      {
+        platform_err_t emergency_ret;
+        uint8_t requested_active;
+
+        requested_active = (0U == emergency_active) ? 1U : 0U;
+        emergency_ret = audio_playback_app_emergency_set(requested_active);
+        if(PLATFORM_ERR_OK == emergency_ret)
+        {
+          emergency_active = requested_active;
+        }
+        plat_log_i("KEY3 pressed, emergency enqueue active=%u ret=%d",
+                   (unsigned int)requested_active,
+                   (int32_t)emergency_ret);
       }
     }
 

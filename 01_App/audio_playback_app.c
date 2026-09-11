@@ -28,9 +28,11 @@
 #define AUDIO_APP_PLAYER_PRIORITY             (6U)
 #define AUDIO_APP_DECODER_PRIORITY            (5U)
 #define AUDIO_APP_DECODER_WAIT_MS             (20U)
-#define AUDIO_APP_CS4344_WARMUP_MS             (500U)
-#define AUDIO_APP_CS4344_WARMUP_RATE_HZ        (44100U)
-#define AUDIO_APP_CS4344_WARMUP_SESSION_ID     (UINT32_MAX)
+#define AUDIO_APP_CS4344_WARMUP_MS            (500U)
+#define AUDIO_APP_CS4344_WARMUP_RATE_HZ       (44100U)
+#define AUDIO_APP_CS4344_WARMUP_SESSION_ID    (UINT32_MAX)
+#define AUDIO_APP_VOICE_SYNTHESIS_POLL_MS         (10U)
+#define AUDIO_APP_VOICE_SYNTHESIS_SEND_TIMEOUT_MS (100U)
 
 #define AUDIO_APP_PLAYER_NOTIFY_COMMAND       (1UL << 0)
 #define AUDIO_APP_PLAYER_NOTIFY_PCM_READY     (1UL << 1)
@@ -44,7 +46,8 @@
 
 typedef enum AUDIO_APP_PLAYER_COMMAND_TYPE_T
 {
-    AUDIO_APP_PLAYER_COMMAND_PLAY = 0U,
+    AUDIO_APP_PLAYER_COMMAND_PLAY_MP3 = 0U,
+    AUDIO_APP_PLAYER_COMMAND_PLAY_VOICE_SYNTHESIS,
     AUDIO_APP_PLAYER_COMMAND_STOP,
     AUDIO_APP_PLAYER_COMMAND_EMERGENCY
 } audio_app_player_command_type_t;
@@ -53,6 +56,8 @@ typedef struct AUDIO_APP_PLAYER_COMMAND_T
 {
     audio_app_player_command_type_t type;
     audio_data_source_t             source;
+    bsp_voice_synthesis_encoding_t  voice_encoding;
+    uint16_t                        voice_text_size;
     uint8_t                         emergency_active;
 } audio_app_player_command_t;
 
@@ -61,6 +66,12 @@ typedef struct AUDIO_APP_DECODE_COMMAND_T
     audio_data_source_t source;
     uint32_t            session_id;
 } audio_app_decode_command_t;
+
+typedef struct AUDIO_APP_PLAYER_RUNTIME_T
+{
+    uint32_t session_id;
+    uint8_t  decoder_eof;
+} audio_app_player_runtime_t;
 
 typedef struct AUDIO_APP_FATFS_SOURCE_T
 {
@@ -97,6 +108,8 @@ static QueueHandle_t audio_app_decode_command_queue;
 static TaskHandle_t  audio_app_player_task_handle;
 static TaskHandle_t  audio_app_decoder_task_handle;
 static volatile uint8_t audio_app_ignore_output_events;
+static volatile uint8_t audio_app_voice_request_pending;
+static uint8_t audio_app_voice_text[AUDIO_PLAYBACK_APP_VOICE_TEXT_MAX_BYTES];
 
 static StaticQueue_t audio_app_free_queue_control;
 static StaticQueue_t audio_app_ready_queue_control;
@@ -128,6 +141,13 @@ static void audio_app_output_callback(bsp_audio_output_event_t event);
 static platform_err_t audio_app_cs4344_warmup(void);
 static void audio_app_player_task(void *p_parameter);
 static void audio_app_decoder_task(void *p_parameter);
+static void audio_app_voice_request_release(void);
+static void audio_app_player_commands_process(
+    audio_app_player_runtime_t *p_runtime);
+static void audio_app_voice_synthesis_process(void);
+static void audio_app_mp3_events_process(
+    uint32_t                    notify_bits,
+    audio_app_player_runtime_t *p_runtime);
 
 static const audio_data_source_ops_t audio_app_fatfs_source_ops =
 {
@@ -142,6 +162,13 @@ static const audio_data_source_t audio_app_default_source =
     &audio_app_fatfs_source_ops,
     &audio_app_default_fatfs_source
 };
+
+static void audio_app_voice_request_release(void)
+{
+    taskENTER_CRITICAL();
+    audio_app_voice_request_pending = 0U;
+    taskEXIT_CRITICAL();
+}
 
 static audio_data_status_t audio_app_fatfs_open(void *p_context)
 {
@@ -448,14 +475,263 @@ static void audio_app_player_refill(bsp_audio_output_event_t event,
     }
 }
 
-static void audio_app_player_task(void *p_parameter)
+static void audio_app_mp3_request_handle(
+    const audio_app_player_command_t *p_command,
+    audio_app_player_runtime_t       *p_runtime)
 {
-    audio_app_player_command_t player_command;
     audio_app_decode_command_t decode_command;
     platform_err_t ret;
+
+    if(AUDIO_PLAYER_SERVICE_STATE_IDLE !=
+       audio_player_service_state_get(&audio_app_player_service))
+    {
+        plat_log_w("Audio MP3 request rejected: player busy");
+        return;
+    }
+
+    p_runtime->session_id++;
+    if(0U == p_runtime->session_id)
+    {
+        p_runtime->session_id = 1U;
+    }
+    p_runtime->decoder_eof = 0U;
+    ret = audio_player_service_prepare(&audio_app_player_service,
+                                       p_runtime->session_id);
+    if(PLATFORM_ERR_OK == ret)
+    {
+        decode_command.source = p_command->source;
+        decode_command.session_id = p_runtime->session_id;
+        if(pdPASS != xQueueSend(audio_app_decode_command_queue,
+                                &decode_command,
+                                0U))
+        {
+            ret = PLATFORM_ERR_BUSY;
+        }
+    }
+    plat_log_i("Audio MP3 prepare ret=%d, session=%lu",
+               (int32_t)ret,
+               (unsigned long)p_runtime->session_id);
+    if(PLATFORM_ERR_OK != ret)
+    {
+        audio_app_player_stop(0U);
+    }
+}
+
+static void audio_app_voice_synthesis_request_handle(
+    const audio_app_player_command_t *p_command)
+{
+    audio_player_service_state_t player_state;
+    platform_err_t ret;
+
+    player_state = audio_player_service_state_get(&audio_app_player_service);
+    if(AUDIO_PLAYER_SERVICE_STATE_IDLE != player_state)
+    {
+        plat_log_w("Voice synthesis request rejected: player busy, state=%u",
+                   (unsigned int)player_state);
+        audio_app_voice_request_release();
+        return;
+    }
+
+    ret = audio_player_service_voice_synthesis_start(
+        &audio_app_player_service,
+        p_command->voice_encoding,
+        audio_app_voice_text,
+        p_command->voice_text_size,
+        AUDIO_APP_VOICE_SYNTHESIS_SEND_TIMEOUT_MS);
+    if(PLATFORM_ERR_OK == ret)
+    {
+        plat_log_i("Voice synthesis playback started");
+    }
+    else
+    {
+        plat_log_e("Voice synthesis start failed, ret=%d", (int32_t)ret);
+        audio_app_voice_request_release();
+    }
+}
+
+static void audio_app_stop_handle(void)
+{
+    audio_player_service_state_t player_state;
+    uint8_t decoder_stop_required;
+
+    player_state = audio_player_service_state_get(&audio_app_player_service);
+    decoder_stop_required = (uint8_t)(
+        (AUDIO_PLAYER_SERVICE_STATE_PREPARING == player_state) ||
+        (AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344 == player_state));
+    audio_app_player_stop(decoder_stop_required);
+    if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS == player_state)
+    {
+        audio_app_voice_request_release();
+    }
+    plat_log_i("Audio playback stopped");
+}
+
+static void audio_app_emergency_handle(uint8_t emergency_active)
+{
+    audio_player_service_state_t player_state;
+    platform_err_t ret;
+
+    player_state = audio_player_service_state_get(&audio_app_player_service);
+    if((AUDIO_PLAYER_SERVICE_STATE_PREPARING == player_state) ||
+       (AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344 == player_state))
+    {
+        audio_app_decoder_stop_request();
+    }
+    ret = audio_player_service_emergency_set(&audio_app_player_service,
+                                             emergency_active);
+    audio_app_ready_queue_flush();
+    if((0U != emergency_active) &&
+       (AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS == player_state))
+    {
+        audio_app_voice_request_release();
+    }
+    plat_log_i("Audio emergency=%u ret=%d",
+               (unsigned int)emergency_active,
+               (int32_t)ret);
+}
+
+static void audio_app_player_commands_process(
+    audio_app_player_runtime_t *p_runtime)
+{
+    audio_app_player_command_t command;
+
+    while(pdPASS == xQueueReceive(audio_app_player_command_queue,
+                                   &command,
+                                   0U))
+    {
+        switch(command.type)
+        {
+            case AUDIO_APP_PLAYER_COMMAND_PLAY_MP3:
+                audio_app_mp3_request_handle(&command, p_runtime);
+                break;
+
+            case AUDIO_APP_PLAYER_COMMAND_PLAY_VOICE_SYNTHESIS:
+                audio_app_voice_synthesis_request_handle(&command);
+                break;
+
+            case AUDIO_APP_PLAYER_COMMAND_STOP:
+                audio_app_stop_handle();
+                break;
+
+            case AUDIO_APP_PLAYER_COMMAND_EMERGENCY:
+                audio_app_emergency_handle(command.emergency_active);
+                break;
+
+            default:
+                plat_log_e("Audio invalid player command=%u",
+                           (unsigned int)command.type);
+                break;
+        }
+    }
+}
+
+static void audio_app_voice_synthesis_process(void)
+{
+    bsp_voice_synthesis_event_t event;
+    platform_err_t ret;
+
+    if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS !=
+       audio_player_service_state_get(&audio_app_player_service))
+    {
+        return;
+    }
+
+    ret = audio_player_service_voice_synthesis_process(
+        &audio_app_player_service,
+        &event);
+    if(PLATFORM_ERR_OK != ret)
+    {
+        plat_log_e("Voice synthesis process failed, ret=%d", (int32_t)ret);
+        audio_app_voice_request_release();
+        return;
+    }
+    if(0U != (event & BSP_VOICE_SYNTHESIS_EVENT_COMMAND_ACCEPTED))
+    {
+        plat_log_i("Voice synthesis command accepted");
+    }
+    if(0U != (event & BSP_VOICE_SYNTHESIS_EVENT_COMMAND_REJECTED))
+    {
+        plat_log_e("Voice synthesis command rejected");
+        audio_app_voice_request_release();
+    }
+    if(0U != (event & BSP_VOICE_SYNTHESIS_EVENT_SPEAKING))
+    {
+        plat_log_i("Voice synthesis speaking");
+    }
+    if(0U != (event & BSP_VOICE_SYNTHESIS_EVENT_IDLE))
+    {
+        plat_log_i("Voice synthesis playback complete");
+        audio_app_voice_request_release();
+        plat_log_i("Audio player stack min free=%lu words",
+                   (unsigned long)uxTaskGetStackHighWaterMark(NULL));
+    }
+}
+
+static void audio_app_mp3_events_process(
+    uint32_t                    notify_bits,
+    audio_app_player_runtime_t *p_runtime)
+{
+    if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_DECODE_ERROR))
+    {
+        plat_log_e("Audio MP3 decode failed, status=%u",
+                   (unsigned int)audio_app_decoder_last_status);
+        audio_app_player_stop(0U);
+    }
+    if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_DECODE_EOF))
+    {
+        p_runtime->decoder_eof = 1U;
+        plat_log_i("Audio MP3 decoder EOF");
+    }
+    if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_PCM_READY))
+    {
+        audio_app_player_start_if_ready(p_runtime->decoder_eof);
+    }
+    if((0U != p_runtime->decoder_eof) &&
+       (AUDIO_PLAYER_SERVICE_STATE_PREPARING ==
+        audio_player_service_state_get(&audio_app_player_service)))
+    {
+        audio_app_player_start_if_ready(p_runtime->decoder_eof);
+    }
+    if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344 !=
+       audio_player_service_state_get(&audio_app_player_service))
+    {
+        return;
+    }
+
+    if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_DMA_HALF))
+    {
+        audio_app_player_refill(BSP_AUDIO_OUTPUT_EVENT_FIRST_HALF_WRITABLE,
+                                p_runtime->decoder_eof);
+    }
+    if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_DMA_FULL))
+    {
+        audio_app_player_refill(BSP_AUDIO_OUTPUT_EVENT_SECOND_HALF_WRITABLE,
+                                p_runtime->decoder_eof);
+    }
+    if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_DMA_ERROR))
+    {
+        plat_log_e("Audio MP3 EDMA error");
+        audio_app_player_stop(1U);
+    }
+    else if((0U != p_runtime->decoder_eof) &&
+            (0U == uxQueueMessagesWaiting(audio_app_ready_queue)) &&
+            (0U == audio_player_service_has_pending_audio(
+                      &audio_app_player_service)))
+    {
+        plat_log_i("Audio MP3 playback complete, underrun=%lu",
+                   (unsigned long)audio_app_player_service.underrun_count);
+        audio_app_player_stop(0U);
+        plat_log_i("Audio player stack min free=%lu words",
+                   (unsigned long)uxTaskGetStackHighWaterMark(NULL));
+    }
+}
+
+static void audio_app_player_task(void *p_parameter)
+{
+    audio_app_player_runtime_t runtime = {0U, 0U};
+    audio_player_service_state_t player_state;
+    platform_err_t ret;
     uint32_t notify_bits;
-    uint32_t session_id = 0U;
-    uint8_t decoder_eof = 0U;
 
     (void)p_parameter;
     ret = audio_player_service_init(&audio_app_player_service,
@@ -472,125 +748,23 @@ static void audio_app_player_task(void *p_parameter)
     for(;;)
     {
         notify_bits = 0U;
-        (void)xTaskNotifyWait(0U, UINT32_MAX, &notify_bits, portMAX_DELAY);
+        player_state = audio_player_service_state_get(
+            &audio_app_player_service);
+        (void)xTaskNotifyWait(
+            0U,
+            UINT32_MAX,
+            &notify_bits,
+            (AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS ==
+             player_state) ?
+                pdMS_TO_TICKS(AUDIO_APP_VOICE_SYNTHESIS_POLL_MS) :
+                portMAX_DELAY);
 
         if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_COMMAND))
         {
-            while(pdPASS == xQueueReceive(audio_app_player_command_queue,
-                                           &player_command,
-                                           0U))
-            {
-                if(AUDIO_APP_PLAYER_COMMAND_PLAY == player_command.type)
-                {
-                    if(AUDIO_PLAYER_SERVICE_STATE_IDLE !=
-                       audio_player_service_state_get(&audio_app_player_service))
-                    {
-                        plat_log_w("Audio play request rejected: busy");
-                        continue;
-                    }
-                    session_id++;
-                    if(0U == session_id)
-                    {
-                        session_id = 1U;
-                    }
-                    decoder_eof = 0U;
-                    ret = audio_player_service_prepare(
-                        &audio_app_player_service,
-                        session_id);
-                    if(PLATFORM_ERR_OK == ret)
-                    {
-                        decode_command.source = player_command.source;
-                        decode_command.session_id = session_id;
-                        if(pdPASS != xQueueSend(audio_app_decode_command_queue,
-                                                &decode_command,
-                                                0U))
-                        {
-                            ret = PLATFORM_ERR_BUSY;
-                        }
-                    }
-                    plat_log_i("Audio MP3 prepare ret=%d, session=%lu",
-                               (int32_t)ret,
-                               (unsigned long)session_id);
-                    if(PLATFORM_ERR_OK != ret)
-                    {
-                        audio_app_player_stop(0U);
-                    }
-                }
-                else if(AUDIO_APP_PLAYER_COMMAND_STOP == player_command.type)
-                {
-                    audio_app_player_stop(1U);
-                    plat_log_i("Audio playback stopped");
-                }
-                else
-                {
-                    audio_app_decoder_stop_request();
-                    ret = audio_player_service_emergency_set(
-                        &audio_app_player_service,
-                        player_command.emergency_active);
-                    audio_app_ready_queue_flush();
-                    plat_log_i("Audio emergency=%u ret=%d",
-                               (unsigned int)player_command.emergency_active,
-                               (int32_t)ret);
-                }
-            }
+            audio_app_player_commands_process(&runtime);
         }
-
-        if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_DECODE_ERROR))
-        {
-            plat_log_e("Audio MP3 decode failed, status=%u",
-                       (unsigned int)audio_app_decoder_last_status);
-            audio_app_player_stop(0U);
-        }
-        if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_DECODE_EOF))
-        {
-            decoder_eof = 1U;
-            plat_log_i("Audio MP3 decoder EOF");
-        }
-
-        if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_PCM_READY))
-        {
-            audio_app_player_start_if_ready(decoder_eof);
-        }
-        if((0U != decoder_eof) &&
-           (AUDIO_PLAYER_SERVICE_STATE_PREPARING ==
-            audio_player_service_state_get(&audio_app_player_service)))
-        {
-            audio_app_player_start_if_ready(decoder_eof);
-        }
-
-        if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344 ==
-           audio_player_service_state_get(&audio_app_player_service))
-        {
-            if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_DMA_HALF))
-            {
-                audio_app_player_refill(
-                    BSP_AUDIO_OUTPUT_EVENT_FIRST_HALF_WRITABLE,
-                    decoder_eof);
-            }
-            if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_DMA_FULL))
-            {
-                audio_app_player_refill(
-                    BSP_AUDIO_OUTPUT_EVENT_SECOND_HALF_WRITABLE,
-                    decoder_eof);
-            }
-            if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_DMA_ERROR))
-            {
-                plat_log_e("Audio MP3 EDMA error");
-                audio_app_player_stop(1U);
-            }
-            else if((0U != decoder_eof) &&
-                    (0U == uxQueueMessagesWaiting(audio_app_ready_queue)) &&
-                    (0U == audio_player_service_has_pending_audio(
-                              &audio_app_player_service)))
-            {
-                plat_log_i("Audio MP3 playback complete, underrun=%lu",
-                           (unsigned long)
-                               audio_app_player_service.underrun_count);
-                audio_app_player_stop(0U);
-                plat_log_i("Audio player stack min free=%lu words",
-                           (unsigned long)uxTaskGetStackHighWaterMark(NULL));
-            }
-        }
+        audio_app_voice_synthesis_process();
+        audio_app_mp3_events_process(notify_bits, &runtime);
     }
 }
 
@@ -771,7 +945,7 @@ platform_err_t audio_playback_app_play(
         return PLATFORM_ERR_PARAM;
     }
     memset(&command, 0, sizeof(command));
-    command.type = AUDIO_APP_PLAYER_COMMAND_PLAY;
+    command.type = AUDIO_APP_PLAYER_COMMAND_PLAY_MP3;
     command.source = *p_source;
     if(pdPASS != xQueueSend(audio_app_player_command_queue, &command, 0U))
     {
@@ -786,6 +960,46 @@ platform_err_t audio_playback_app_play(
 platform_err_t audio_playback_app_play_default(void)
 {
     return audio_playback_app_play(&audio_app_default_source);
+}
+
+platform_err_t audio_playback_app_voice_speak(
+    bsp_voice_synthesis_encoding_t encoding,
+    const uint8_t                 *p_text,
+    uint16_t                       text_size)
+{
+    audio_app_player_command_t command;
+
+    if((NULL == p_text) || (0U == text_size) ||
+       (text_size > AUDIO_PLAYBACK_APP_VOICE_TEXT_MAX_BYTES) ||
+       (NULL == audio_app_player_command_queue) ||
+       (NULL == audio_app_player_task_handle))
+    {
+        return PLATFORM_ERR_PARAM;
+    }
+
+    taskENTER_CRITICAL();
+    if(0U != audio_app_voice_request_pending)
+    {
+        taskEXIT_CRITICAL();
+        return PLATFORM_ERR_BUSY;
+    }
+    audio_app_voice_request_pending = 1U;
+    taskEXIT_CRITICAL();
+
+    memcpy(audio_app_voice_text, p_text, text_size);
+    memset(&command, 0, sizeof(command));
+    command.type = AUDIO_APP_PLAYER_COMMAND_PLAY_VOICE_SYNTHESIS;
+    command.voice_encoding = encoding;
+    command.voice_text_size = text_size;
+    if(pdPASS != xQueueSend(audio_app_player_command_queue, &command, 0U))
+    {
+        audio_app_voice_request_release();
+        return PLATFORM_ERR_BUSY;
+    }
+    (void)xTaskNotify(audio_app_player_task_handle,
+                      AUDIO_APP_PLAYER_NOTIFY_COMMAND,
+                      eSetBits);
+    return PLATFORM_ERR_OK;
 }
 
 platform_err_t audio_playback_app_stop(void)

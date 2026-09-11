@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>AT32F435VGT7, USE_STDPERIPH_DRIVER, USE_DEBUG_LOG</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\04_Impl\mcu_at32;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\06_Component\Button;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
+              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\04_Impl\mcu_at32;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\06_Component\ExternalChip\VTX316;..\..\06_Component\Button;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -757,6 +757,16 @@
               <FileType>5</FileType>
               <FilePath>..\..\03_Platform\bsp\bsp_audio_output.h</FilePath>
             </File>
+            <File>
+              <FileName>bsp_voice_synthesis.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_voice_synthesis.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_voice_synthesis.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_voice_synthesis.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -849,6 +859,16 @@
               <FileName>tpa3116.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\06_Component\ExternalChip\TPA3116\tpa3116.h</FilePath>
+            </File>
+            <File>
+              <FileName>vtx316.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\06_Component\ExternalChip\VTX316\vtx316.c</FilePath>
+            </File>
+            <File>
+              <FileName>vtx316.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\06_Component\ExternalChip\VTX316\vtx316.h</FilePath>
             </File>
           </Files>
         </Group>

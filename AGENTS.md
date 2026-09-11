@@ -24,7 +24,7 @@
 
 关键约束：
 
-- Flash 1024 KiB；SRAM 384 KiB；主栈 2 KiB；FreeRTOS 堆 128KB。实际值以工程文件为准。
+- Flash 1024 KiB；SRAM 384 KiB；主栈 2 KiB；FreeRTOS 堆 64 KiB。实际值以工程文件为准。
 - 禁止使用 `malloc`/`free`；动态内存只能使用 FreeRTOS 分配接口，并说明所有权、释放时机和失败处理。
 - 任务栈必须通过栈高水位验证。UART 中断响应目标小于 10 μs，控制环路目标为 1 kHz。
 - `project/` 中厂商生成文件优先只改 user code 区；不得擅自改写生成结构或迁移现有代码。
@@ -43,3 +43,26 @@
 - 代码或工程配置修改后默认只编译，要求 0 error、0 warning。
 - 只有用户明确要求且开发板已连接时才烧录；纯文档修改无需编译。
 - Keil 路径无效时报告环境问题，不擅自修改脚本为未经确认的路径。
+
+## 4. 分层入口
+
+工程依赖方向原则上为：
+
+```text
+01_App -> 02_Service -> 03_Platform/bsp
+                              |-> 03_Platform/mcu_interface -> 04_Impl
+                              `-> 06_Component/ExternalChip
+```
+
+- 上层可以依赖下层公开接口，下层禁止反向依赖上层。
+- 公共接口使用所属层的通用语义；芯片型号、厂商类型和寄存器定义不得穿透到更高层。
+- 类型转换必须在边界层显式完成，禁止仅用强制类型转换掩盖抽象泄漏。
+- RTOS 任务、队列、通知和调度只由 App 或 `project/` 的系统装配代码持有；Service 和可复用 Component 禁止依赖 RTOS。
+- 各目录的具体规则见其就近 `AGENTS.md`：
+  - `00_Project_Config/AGENTS.md`
+  - `01_App/AGENTS.md`
+  - `02_Service/AGENTS.md`
+  - `03_Platform/AGENTS.md`
+  - `04_Impl/AGENTS.md`
+  - `06_Component/AGENTS.md`
+  - `project/AGENTS.md`

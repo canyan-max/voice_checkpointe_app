@@ -11,6 +11,8 @@
 #include "audio_player_service.h"
 #include "bsp_audio_amplifier.h"
 
+#define AUDIO_PLAYER_SERVICE_VOICE_STOP_TIMEOUT_MS  100U
+
 static platform_err_t audio_player_service_half_write(
     audio_player_service_t  *p_service,
     uint32_t                 half_index,
@@ -78,6 +80,10 @@ platform_err_t audio_player_service_init(
     {
         /* Diagnostic: keep TPA3116 unmuted from system initialization. */
         ret = bsp_audio_amplifier_mute_set(UNMUTES_AMP);
+    }
+    if(PLATFORM_ERR_OK == ret)
+    {
+        ret = bsp_voice_synthesis_init();
     }
     p_service->state = (PLATFORM_ERR_OK == ret) ?
                        AUDIO_PLAYER_SERVICE_STATE_IDLE :
@@ -180,6 +186,74 @@ platform_err_t audio_player_service_unmute(
     return ret;
 }
 
+platform_err_t audio_player_service_voice_synthesis_start(
+    audio_player_service_t         *p_service,
+    bsp_voice_synthesis_encoding_t  encoding,
+    const uint8_t                  *p_text,
+    uint16_t                        text_size,
+    uint32_t                        timeout_ms)
+{
+    platform_err_t ret;
+
+    if((NULL == p_service) || (NULL == p_text) ||
+       (0U == text_size) || (0U == timeout_ms))
+    {
+        return PLATFORM_ERR_PARAM;
+    }
+    if(AUDIO_PLAYER_SERVICE_STATE_IDLE != p_service->state)
+    {
+        return PLATFORM_ERR_BUSY;
+    }
+
+    ret = bsp_voice_synthesis_speak(encoding,
+                                    p_text,
+                                    text_size,
+                                    timeout_ms);
+    if(PLATFORM_ERR_OK == ret)
+    {
+        p_service->state =
+            AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS;
+    }
+    return ret;
+}
+
+platform_err_t audio_player_service_voice_synthesis_process(
+    audio_player_service_t       *p_service,
+    bsp_voice_synthesis_event_t  *p_event)
+{
+    platform_err_t ret;
+
+    if((NULL == p_service) || (NULL == p_event))
+    {
+        return PLATFORM_ERR_PARAM;
+    }
+    if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS !=
+       p_service->state)
+    {
+        return PLATFORM_ERR_BUSY;
+    }
+
+    ret = bsp_voice_synthesis_process(p_event);
+    if(PLATFORM_ERR_OK != ret)
+    {
+        /* Release the shared player after an RX fault so a later request can
+         * retry instead of leaving the service permanently occupied. */
+        (void)bsp_voice_synthesis_stop(
+            AUDIO_PLAYER_SERVICE_VOICE_STOP_TIMEOUT_MS);
+        p_service->state = AUDIO_PLAYER_SERVICE_STATE_IDLE;
+    }
+    else if(0U != (*p_event &
+                   BSP_VOICE_SYNTHESIS_EVENT_COMMAND_REJECTED))
+    {
+        p_service->state = AUDIO_PLAYER_SERVICE_STATE_IDLE;
+    }
+    else if(0U != (*p_event & BSP_VOICE_SYNTHESIS_EVENT_IDLE))
+    {
+        p_service->state = AUDIO_PLAYER_SERVICE_STATE_IDLE;
+    }
+    return ret;
+}
+
 platform_err_t audio_player_service_refill(
     audio_player_service_t  *p_service,
     bsp_audio_output_event_t output_event,
@@ -213,7 +287,7 @@ platform_err_t audio_player_service_refill(
 
 platform_err_t audio_player_service_stop(audio_player_service_t *p_service)
 {
-    platform_err_t output_ret;
+    platform_err_t ret;
 
     if(NULL == p_service)
     {
@@ -224,11 +298,20 @@ platform_err_t audio_player_service_stop(audio_player_service_t *p_service)
         return PLATFORM_ERR_OK;
     }
 
-    output_ret = bsp_audio_output_stream_stop();
+    if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS ==
+       p_service->state)
+    {
+        ret = bsp_voice_synthesis_stop(
+            AUDIO_PLAYER_SERVICE_VOICE_STOP_TIMEOUT_MS);
+    }
+    else
+    {
+        ret = bsp_audio_output_stream_stop();
+    }
     p_service->state = AUDIO_PLAYER_SERVICE_STATE_IDLE;
     p_service->half_has_audio[0] = 0U;
     p_service->half_has_audio[1] = 0U;
-    return output_ret;
+    return ret;
 }
 
 platform_err_t audio_player_service_emergency_set(
@@ -247,6 +330,12 @@ platform_err_t audio_player_service_emergency_set(
            (AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344 == p_service->state))
         {
             ret = bsp_audio_output_stream_stop();
+        }
+        else if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS ==
+                p_service->state)
+        {
+            ret = bsp_voice_synthesis_stop(
+                AUDIO_PLAYER_SERVICE_VOICE_STOP_TIMEOUT_MS);
         }
         if(PLATFORM_ERR_OK == ret)
         {

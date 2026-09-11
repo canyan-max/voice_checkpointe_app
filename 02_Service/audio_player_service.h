@@ -16,6 +16,7 @@ extern "C"
 #include <stdint.h>
 #include "audio_pcm_block.h"
 #include "bsp_audio_output.h"
+#include "bsp_voice_synthesis.h"
 #include "plat_error.h"
 
 #define AUDIO_PLAYER_DMA_HALF_FRAMES    AUDIO_PCM_MAX_FRAMES_PER_BLOCK
@@ -28,6 +29,7 @@ typedef enum AUDIO_PLAYER_SERVICE_STATE_T
     AUDIO_PLAYER_SERVICE_STATE_IDLE = 0U,
     AUDIO_PLAYER_SERVICE_STATE_PREPARING,
     AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344,
+    AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS,
     AUDIO_PLAYER_SERVICE_STATE_EMERGENCY,
     AUDIO_PLAYER_SERVICE_STATE_ERROR
 } audio_player_service_state_t;
@@ -57,6 +59,17 @@ platform_err_t audio_player_service_start(
 
 platform_err_t audio_player_service_unmute(
     audio_player_service_t *p_service);
+
+platform_err_t audio_player_service_voice_synthesis_start(
+    audio_player_service_t          *p_service,
+    bsp_voice_synthesis_encoding_t   encoding,
+    const uint8_t                   *p_text,
+    uint16_t                         text_size,
+    uint32_t                         timeout_ms);
+
+platform_err_t audio_player_service_voice_synthesis_process(
+    audio_player_service_t        *p_service,
+    bsp_voice_synthesis_event_t   *p_event);
 
 platform_err_t audio_player_service_refill(
     audio_player_service_t  *p_service,
