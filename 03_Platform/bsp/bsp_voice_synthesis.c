@@ -293,7 +293,7 @@ platform_err_t bsp_voice_synthesis_busy_get(uint8_t *p_is_busy)
         vtx316_busy_get(&vtx316_device, p_is_busy));
 }
 
-platform_err_t bsp_voice_synthesis_process(
+platform_err_t bsp_voice_synthesis_poll(
     bsp_voice_synthesis_event_t *p_event)
 {
     uint8_t rx_data[BSP_VOICE_SYNTHESIS_RX_READ_SIZE];

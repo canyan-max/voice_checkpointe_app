@@ -17,6 +17,7 @@
 #include "board_resources.h"
 #include "audio_playback_app.h"
 #include "button.h"
+#include "led_indicator_app.h"
 /* add user code end private includes */
 
 /* private typedef -----------------------------------------------------------*/
@@ -188,6 +189,7 @@ void start_or_test_f(void *pvParameters)
   /* add user code begin start_or_test_f 0 */
   platform_err_t log_ret;
   platform_err_t app_ret;
+  platform_err_t led_ret;
   platform_err_t gpio_ret;
   platform_err_t play_ret;
   button_status_t button_ret;
@@ -222,6 +224,8 @@ void start_or_test_f(void *pvParameters)
   /* add user code begin start_or_test_f 2 */
   log_ret = plat_log_init();
   plat_log_i("Audio MP3 application start, log_init=%d", (int32_t)log_ret);
+  led_ret = led_indicator_app_init();
+  plat_log_i("LED indicator app init=%d", (int32_t)led_ret);
   app_ret = audio_playback_app_init();
   plat_log_i("Audio app init=%d, KEY1=MP3, KEY2=VTX316, KEY3=emergency",
              (int32_t)app_ret);

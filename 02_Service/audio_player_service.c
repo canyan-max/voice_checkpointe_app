@@ -233,7 +233,7 @@ platform_err_t audio_player_service_voice_synthesis_process(
         return PLATFORM_ERR_BUSY;
     }
 
-    ret = bsp_voice_synthesis_process(p_event);
+    ret = bsp_voice_synthesis_poll(p_event);
     if(PLATFORM_ERR_OK != ret)
     {
         /* Release the shared player after an RX fault so a later request can

@@ -16,6 +16,7 @@
 #include "audio_playback_app.h"
 #include "audio_pcm_block.h"
 #include "audio_player_service.h"
+#include "led_indicator_app.h"
 #include "mp3_decoder_service.h"
 #include "plat_log.h"
 
@@ -540,7 +541,15 @@ static void audio_app_voice_synthesis_request_handle(
         AUDIO_APP_VOICE_SYNTHESIS_SEND_TIMEOUT_MS);
     if(PLATFORM_ERR_OK == ret)
     {
+        platform_err_t led_ret;
+
         plat_log_i("Voice synthesis playback started");
+        led_ret = led_indicator_app_voice_synthesis_started();
+        if(PLATFORM_ERR_OK != led_ret)
+        {
+            plat_log_e("Voice synthesis LED start failed, ret=%d",
+                       (int32_t)led_ret);
+        }
     }
     else
     {

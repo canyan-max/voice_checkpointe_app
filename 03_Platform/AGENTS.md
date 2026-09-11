@@ -8,6 +8,7 @@
 - BSP 公共头文件只能暴露板级通用类型；不得包含 ExternalChip 驱动头文件或向 Service 暴露芯片私有事件、状态和编码类型。
 - 具体芯片对象、协议类型及其与 BSP 类型的映射只允许出现在 BSP `.c` 文件内部。
 - BSP 负责绑定逻辑资源、平台接口和 ExternalChip 回调，不负责 RTOS 调度、业务排队或跨音源策略。
+- BSP 中由上层周期调用、仅用于收取硬件数据并产生事件的入口使用 `*_poll()` 命名；`*_process()` 留给确实执行协议或业务处理的层。
 - 当前板上只有一个固定器件时不引入无意义的 BSP context；ExternalChip 为保持可移植性可以保留 context。
 
 ## MCU Interface 与公共类型

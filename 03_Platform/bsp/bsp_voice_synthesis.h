@@ -63,10 +63,10 @@ platform_err_t bsp_voice_synthesis_stop(uint32_t timeout_ms);
 platform_err_t bsp_voice_synthesis_busy_get(uint8_t *p_is_busy);
 
 /**
- * @brief Drain voice synthesis responses and update the device state.
+ * @brief Poll received voice synthesis bytes and report device events.
  * @param p_event Receives ORed BSP_VOICE_SYNTHESIS_EVENT_* flags.
  */
-platform_err_t bsp_voice_synthesis_process(
+platform_err_t bsp_voice_synthesis_poll(
     bsp_voice_synthesis_event_t *p_event);
 
 platform_err_t bsp_voice_synthesis_state_get(

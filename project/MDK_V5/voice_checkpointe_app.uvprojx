@@ -697,6 +697,16 @@
               <FileType>5</FileType>
               <FilePath>..\..\01_App\audio_playback_app.h</FilePath>
             </File>
+            <File>
+              <FileName>led_indicator_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\01_App\led_indicator_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>led_indicator_app.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\01_App\led_indicator_app.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -766,6 +776,16 @@
               <FileName>bsp_voice_synthesis.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\03_Platform\bsp\bsp_voice_synthesis.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_led.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_led.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_led.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_led.h</FilePath>
             </File>
           </Files>
         </Group>
