@@ -463,6 +463,7 @@
             <Parameters name="Label" value="RS485_RXEN_PA12"/>
         </Signal>
         <Signal SignalName="I2C2_SCL" PinName="PH2">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="EEPROM_SCL_PH2"/>
         </Signal>
         <Signal SignalName="SPI3_CS" PinName="PA15">
@@ -477,6 +478,7 @@
             <Parameters name="Label" value="QSPI1_WS_PC11"/>
         </Signal>
         <Signal SignalName="I2C2_SDA" PinName="PC12">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="EEPROM_SDA_PC12"/>
         </Signal>
         <Signal SignalName="GPIO_Output" PinName="PD0">

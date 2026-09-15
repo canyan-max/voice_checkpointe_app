@@ -16,6 +16,7 @@
 #include "plat_sys.h"
 #include "board_resources.h"
 #include "audio_playback_app.h"
+#include "bsp_audio_volume.h"
 #include "button.h"
 #include "led_indicator_app.h"
 /* add user code end private includes */
@@ -32,7 +33,9 @@
 #define START_TEST_KEY_DEBOUNCE_MS         30U
 #define START_TEST_KEY_LONG_PRESS_MS     1000U
 #define START_TEST_KEY_DOUBLE_CLICK_MS    300U
-#define START_TEST_BUTTON_COUNT             3U
+#define START_TEST_BUTTON_COUNT             4U
+#define START_TEST_VOLUME_STEP              5U
+#define START_TEST_I2C_TIMEOUT_MS          100U
 
 /* add user code end private define */
 
@@ -192,12 +195,16 @@ void start_or_test_f(void *pvParameters)
   platform_err_t led_ret;
   platform_err_t gpio_ret;
   platform_err_t play_ret;
+  platform_err_t volume_ret;
+  platform_err_t volume_read_ret;
   button_status_t button_ret;
   button_event_t button_event;
   plat_gpio_state_t key_sample;
   uint32_t now_ms;
   uint8_t button_index;
   uint8_t emergency_active = 0U;
+  uint8_t volume_ready = 0U;
+  uint8_t volume_position = BSP_AUDIO_VOLUME_POSITION_DEFAULT;
   button_t buttons[START_TEST_BUTTON_COUNT];
   uint8_t button_ready[START_TEST_BUTTON_COUNT] = {0U};
   uint8_t gpio_error_logged[START_TEST_BUTTON_COUNT] = {0U};
@@ -205,7 +212,8 @@ void start_or_test_f(void *pvParameters)
   {
     BOARD_GPIO_KEY1,
     BOARD_GPIO_KEY2,
-    BOARD_GPIO_KEY3
+    BOARD_GPIO_KEY3,
+    BOARD_GPIO_KEY4
   };
   static const button_timing_t button_timing =
   {
@@ -224,10 +232,26 @@ void start_or_test_f(void *pvParameters)
   /* add user code begin start_or_test_f 2 */
   log_ret = plat_log_init();
   plat_log_i("Audio MP3 application start, log_init=%d", (int32_t)log_ret);
+  volume_ret = bsp_audio_volume_init(START_TEST_I2C_TIMEOUT_MS);
+  volume_read_ret = volume_ret;
+  if(PLATFORM_ERR_OK == volume_ret)
+  {
+    volume_read_ret = bsp_audio_volume_position_get(
+        &volume_position,
+        START_TEST_I2C_TIMEOUT_MS);
+    if(PLATFORM_ERR_OK == volume_read_ret)
+    {
+      volume_ready = 1U;
+    }
+  }
+  plat_log_i("CAT5171 BSP init ret=%d, read ret=%d, D=%u",
+             (int32_t)volume_ret,
+             (int32_t)volume_read_ret,
+             (unsigned int)volume_position);
   led_ret = led_indicator_app_init();
   plat_log_i("LED indicator app init=%d", (int32_t)led_ret);
   app_ret = audio_playback_app_init();
-  plat_log_i("Audio app init=%d, KEY1=MP3, KEY2=VTX316, KEY3=emergency",
+  plat_log_i("Audio app init=%d, KEY1=MP3, KEY2=VTX316, KEY3=emergency, KEY4=volume+5",
              (int32_t)app_ret);
 
   now_ms = plat_tick_get_ms();
@@ -321,7 +345,7 @@ void start_or_test_f(void *pvParameters)
         plat_log_i("KEY2 pressed, VTX316 request enqueue ret=%d",
                    (int32_t)vtx_ret);
       }
-      else
+      else if(2U == button_index)
       {
         platform_err_t emergency_ret;
         uint8_t requested_active;
@@ -335,6 +359,70 @@ void start_or_test_f(void *pvParameters)
         plat_log_i("KEY3 pressed, emergency enqueue active=%u ret=%d",
                    (unsigned int)requested_active,
                    (int32_t)emergency_ret);
+      }
+      else
+      {
+        uint16_t requested_position;
+        uint8_t readback = 0U;
+
+        if(0U == volume_ready)
+        {
+          volume_ret = bsp_audio_volume_init(START_TEST_I2C_TIMEOUT_MS);
+          volume_read_ret = volume_ret;
+          if(PLATFORM_ERR_OK == volume_ret)
+          {
+            volume_read_ret = bsp_audio_volume_position_get(
+                &volume_position,
+                START_TEST_I2C_TIMEOUT_MS);
+            if(PLATFORM_ERR_OK == volume_read_ret)
+            {
+              volume_ready = 1U;
+            }
+          }
+          plat_log_i("KEY4 CAT5171 retry init ret=%d, read ret=%d, D=%u",
+                     (int32_t)volume_ret,
+                     (int32_t)volume_read_ret,
+                     (unsigned int)volume_position);
+        }
+
+        if(0U != volume_ready)
+        {
+          requested_position = (uint16_t)volume_position +
+                               START_TEST_VOLUME_STEP;
+          if(requested_position > BSP_AUDIO_VOLUME_POSITION_MAX)
+          {
+            requested_position = BSP_AUDIO_VOLUME_POSITION_MAX;
+          }
+
+          volume_ret = bsp_audio_volume_position_set(
+              (uint8_t)requested_position,
+              START_TEST_I2C_TIMEOUT_MS);
+          volume_read_ret = volume_ret;
+          if(PLATFORM_ERR_OK == volume_ret)
+          {
+            volume_read_ret = bsp_audio_volume_position_get(
+                &readback,
+                START_TEST_I2C_TIMEOUT_MS);
+          }
+          if((PLATFORM_ERR_OK == volume_read_ret) &&
+             (readback != (uint8_t)requested_position))
+          {
+            volume_read_ret = PLATFORM_ERR_HW;
+          }
+          if(PLATFORM_ERR_OK == volume_read_ret)
+          {
+            volume_position = readback;
+          }
+          else
+          {
+            volume_ready = 0U;
+          }
+          plat_log_i("KEY4 CAT5171 set D=%u ret=%d, read ret=%d, readback=%u",
+                     (unsigned int)requested_position,
+                     (int32_t)volume_ret,
+                     (int32_t)volume_read_ret,
+                     (unsigned int)readback);
+        }
       }
     }
 

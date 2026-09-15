@@ -70,6 +70,10 @@ extern "C"
 #define BOARD_I2S_AUDIO_OUTPUT      ((plat_i2s_id_t)0U)
 #define BOARD_I2S_RESOURCE_NUM      ((plat_i2s_id_t)1U)
 
+/* I2C2 is shared by the EEPROM and audio volume controller. */
+#define BOARD_I2C_SHARED            ((plat_i2c_id_t)0U)
+#define BOARD_I2C_RESOURCE_NUM      ((plat_i2c_id_t)1U)
+
 /* typedef ------------------------------------------------------------------*/
 
 /* variables ----------------------------------------------------------------*/

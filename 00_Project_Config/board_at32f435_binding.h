@@ -125,6 +125,8 @@ extern "C"
 #define BOARD_I2S_AUDIO_OUTPUT_TX_DMA_FULL    EDMA_FDT1_FLAG
 #define BOARD_I2S_AUDIO_OUTPUT_TX_DMA_ERROR   EDMA_DTERR1_FLAG
 
+#define BOARD_I2C_SHARED_INSTANCE             I2C2
+
 /* typedef ------------------------------------------------------------------*/
 
 /* variables ----------------------------------------------------------------*/

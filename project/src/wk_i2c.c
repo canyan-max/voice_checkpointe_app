@@ -53,7 +53,7 @@ void wk_i2c2_init(void)
   /* configure the SCL pin */
   gpio_pin_mux_config(EEPROM_SCL_PH2_GPIO_PORT, GPIO_PINS_SOURCE2, GPIO_MUX_4);
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_OPEN_DRAIN;
-  gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
+  gpio_init_struct.gpio_pull = GPIO_PULL_UP;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_MODERATE;
   gpio_init_struct.gpio_pins = EEPROM_SCL_PH2_PIN;
@@ -62,7 +62,7 @@ void wk_i2c2_init(void)
   /* configure the SDA pin */
   gpio_pin_mux_config(EEPROM_SDA_PC12_GPIO_PORT, GPIO_PINS_SOURCE12, GPIO_MUX_4);
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_OPEN_DRAIN;
-  gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
+  gpio_init_struct.gpio_pull = GPIO_PULL_UP;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_MODERATE;
   gpio_init_struct.gpio_pins = EEPROM_SDA_PC12_PIN;
