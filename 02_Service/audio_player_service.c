@@ -78,11 +78,6 @@ platform_err_t audio_player_service_init(
     }
     if(PLATFORM_ERR_OK == ret)
     {
-        /* Diagnostic: keep TPA3116 unmuted from system initialization. */
-        ret = bsp_audio_amplifier_mute_set(UNMUTES_AMP);
-    }
-    if(PLATFORM_ERR_OK == ret)
-    {
         ret = bsp_voice_synthesis_init();
     }
     p_service->state = (PLATFORM_ERR_OK == ret) ?
@@ -178,7 +173,7 @@ platform_err_t audio_player_service_unmute(
     {
         return PLATFORM_ERR_PARAM;
     }
-    ret = bsp_audio_amplifier_mute_set(UNMUTES_AMP);
+    ret = bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_UNMUTED);
     if(PLATFORM_ERR_OK != ret)
     {
         p_service->state = AUDIO_PLAYER_SERVICE_STATE_ERROR;
@@ -205,14 +200,22 @@ platform_err_t audio_player_service_voice_synthesis_start(
         return PLATFORM_ERR_BUSY;
     }
 
-    ret = bsp_voice_synthesis_speak(encoding,
-                                    p_text,
-                                    text_size,
-                                    timeout_ms);
+    ret = bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_UNMUTED);
+    if(PLATFORM_ERR_OK == ret)
+    {
+        ret = bsp_voice_synthesis_speak(encoding,
+                                        p_text,
+                                        text_size,
+                                        timeout_ms);
+    }
     if(PLATFORM_ERR_OK == ret)
     {
         p_service->state =
             AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS;
+    }
+    else
+    {
+        (void)bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_MUTED);
     }
     return ret;
 }
@@ -240,16 +243,23 @@ platform_err_t audio_player_service_voice_synthesis_process(
          * retry instead of leaving the service permanently occupied. */
         (void)bsp_voice_synthesis_stop(
             AUDIO_PLAYER_SERVICE_VOICE_STOP_TIMEOUT_MS);
+        (void)bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_MUTED);
         p_service->state = AUDIO_PLAYER_SERVICE_STATE_IDLE;
     }
     else if(0U != (*p_event &
                    BSP_VOICE_SYNTHESIS_EVENT_COMMAND_REJECTED))
     {
-        p_service->state = AUDIO_PLAYER_SERVICE_STATE_IDLE;
+        ret = bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_MUTED);
+        p_service->state = (PLATFORM_ERR_OK == ret) ?
+                           AUDIO_PLAYER_SERVICE_STATE_IDLE :
+                           AUDIO_PLAYER_SERVICE_STATE_ERROR;
     }
     else if(0U != (*p_event & BSP_VOICE_SYNTHESIS_EVENT_IDLE))
     {
-        p_service->state = AUDIO_PLAYER_SERVICE_STATE_IDLE;
+        ret = bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_MUTED);
+        p_service->state = (PLATFORM_ERR_OK == ret) ?
+                           AUDIO_PLAYER_SERVICE_STATE_IDLE :
+                           AUDIO_PLAYER_SERVICE_STATE_ERROR;
     }
     return ret;
 }
@@ -287,6 +297,7 @@ platform_err_t audio_player_service_refill(
 
 platform_err_t audio_player_service_stop(audio_player_service_t *p_service)
 {
+    platform_err_t mute_ret;
     platform_err_t ret;
 
     if(NULL == p_service)
@@ -298,6 +309,7 @@ platform_err_t audio_player_service_stop(audio_player_service_t *p_service)
         return PLATFORM_ERR_OK;
     }
 
+    mute_ret = bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_MUTED);
     if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS ==
        p_service->state)
     {
@@ -311,7 +323,7 @@ platform_err_t audio_player_service_stop(audio_player_service_t *p_service)
     p_service->state = AUDIO_PLAYER_SERVICE_STATE_IDLE;
     p_service->half_has_audio[0] = 0U;
     p_service->half_has_audio[1] = 0U;
-    return ret;
+    return (PLATFORM_ERR_OK != mute_ret) ? mute_ret : ret;
 }
 
 platform_err_t audio_player_service_emergency_set(
@@ -339,7 +351,8 @@ platform_err_t audio_player_service_emergency_set(
         }
         if(PLATFORM_ERR_OK == ret)
         {
-            ret = bsp_audio_amplifier_mute_set(UNMUTES_AMP);
+            ret = bsp_audio_amplifier_mute_set(
+                BSP_AUDIO_AMPLIFIER_UNMUTED);
         }
         p_service->state = (PLATFORM_ERR_OK == ret) ?
                            AUDIO_PLAYER_SERVICE_STATE_EMERGENCY :
@@ -347,7 +360,10 @@ platform_err_t audio_player_service_emergency_set(
     }
     else if(AUDIO_PLAYER_SERVICE_STATE_EMERGENCY == p_service->state)
     {
-        p_service->state = AUDIO_PLAYER_SERVICE_STATE_IDLE;
+        ret = bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_MUTED);
+        p_service->state = (PLATFORM_ERR_OK == ret) ?
+                           AUDIO_PLAYER_SERVICE_STATE_IDLE :
+                           AUDIO_PLAYER_SERVICE_STATE_ERROR;
     }
     return ret;
 }

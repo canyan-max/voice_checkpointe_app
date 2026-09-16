@@ -733,6 +733,16 @@
               <FilePath>..\..\02_Service\audio_player_service.h</FilePath>
             </File>
             <File>
+              <FileName>audio_volume_service.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\02_Service\audio_volume_service.c</FilePath>
+            </File>
+            <File>
+              <FileName>audio_volume_service.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\02_Service\audio_volume_service.h</FilePath>
+            </File>
+            <File>
               <FileName>mp3_decoder_service.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\02_Service\mp3_decoder_service.c</FilePath>

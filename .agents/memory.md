@@ -142,3 +142,27 @@ Audio Player Service（状态与互斥）
 
 - 本阶段代码提交：`961b023 feat: integrate voice synthesis playback control`。
 - 该提交前完整 Keil 编译结果为 `0 Error(s), 0 Warning(s)`。
+
+## 2026-09-16：I2C 实现与 EEPROM 接入前复审点
+
+### 当前决定
+
+- 保留 MCU 无关的 `plat_i2c` 接口及当前 AT32 Impl，不在 CAT5171 已完成板测后立即切换到厂商 `i2c_application` 中间件。
+- 当前 Impl 并非软件模拟 I2C，而是基于 AT32 官方底层外设库实现阻塞式主机事务；与厂商 application library 重复的是等待标志、收发流程和错误处理这一层。
+- CAT5171 继续使用现有 `plat_i2c_write()` / `plat_i2c_read()`，不因未来 EEPROM 需求提前扩大接口。
+
+### 暂不直接切换厂商 application library 的原因
+
+- 厂商接口的 `timeout` 实际为循环递减次数，不是毫秒；而且各等待阶段会重复使用完整 timeout，无法满足当前平台接口定义的“整次事务总毫秒超时”。
+- 厂商 polling 函数在中间步骤失败时通常直接返回 `I2C_ERR_STEP_x`，缺少当前 Impl 已有的统一 STOP、错误标志清理和 `CTRL2` 复位流程。
+- 厂商 `i2c_config()` 会复位外设、调用 `i2c_lowlevel_init()` 并重新使能，与当前由 `wk_i2c2_init()` 完成初始化的工程结构重复。
+- 厂商库同时包含从机、中断、DMA、SMBus 和 memory 等大量当前未使用能力；直接接入会扩大依赖面，但不能自动解决平台超时语义和总线恢复问题。
+
+### EEPROM 接入时必须重新讨论
+
+EEPROM 型号、容量、页大小、内部地址宽度及写周期明确后，再评估以下两条路线：
+
+1. 继续保留当前 Impl，并给 `plat_i2c` 增加通用的 write-read 组合事务，以 repeated-start 完成 EEPROM 随机读取。
+2. 引入厂商 `i2c_application`，但必须先解决毫秒超时、错误恢复、已有 WorkBench 初始化复用以及 7-bit 地址转换，不能直接以厂商 timeout 参数替代 `timeout_ms`。
+
+EEPROM 的页边界拆分、写完成 ACK polling、器件容量和地址规则应放在 EEPROM ExternalChip 驱动中，不应下沉到通用 `plat_i2c`。在完成上述复审前，不为 EEPROM 直接拼接“先 STOP 的 write 再 read”来冒充 repeated-start 组合事务。

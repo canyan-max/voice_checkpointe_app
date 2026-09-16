@@ -431,9 +431,13 @@ static void audio_app_player_start_if_ready(uint8_t decoder_eof)
         p_second_block = &audio_app_startup_silence_block;
     }
 
-    ret = audio_player_service_start(&audio_app_player_service,
-                                     p_first_block,
-                                     p_second_block);
+    ret = audio_player_service_unmute(&audio_app_player_service);
+    if(PLATFORM_ERR_OK == ret)
+    {
+        ret = audio_player_service_start(&audio_app_player_service,
+                                         p_first_block,
+                                         p_second_block);
+    }
     audio_app_block_return(p_first_block);
     if(p_second_block != &audio_app_startup_silence_block)
     {

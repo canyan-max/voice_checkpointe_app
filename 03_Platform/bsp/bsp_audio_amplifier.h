@@ -20,7 +20,8 @@ extern "C"
 
 
 
-#define UNMUTES_AMP         (0U)
+#define BSP_AUDIO_AMPLIFIER_UNMUTED  (0U)
+#define BSP_AUDIO_AMPLIFIER_MUTED    (1U)
 #define ISMUTES_AMP         (1U)
 /* function  ----------------------------------------------------------------*/
 /**

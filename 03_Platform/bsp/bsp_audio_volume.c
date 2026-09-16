@@ -13,8 +13,52 @@
 #include "plat_i2c.h"
 
 #define BSP_AUDIO_VOLUME_I2C_ADDRESS_7BIT  0x2CU
+#define BSP_AUDIO_VOLUME_LEVEL_SCALE       100U
 
 static cat5171_device_t audio_volume_device;
+
+_Static_assert(BSP_AUDIO_VOLUME_POSITION_MAX >
+                   BSP_AUDIO_VOLUME_POSITION_MIN,
+               "Audio volume position range is invalid");
+_Static_assert(BSP_AUDIO_VOLUME_LEVEL_MAX ==
+                   BSP_AUDIO_VOLUME_LEVEL_SCALE,
+               "Audio volume level scale mismatch");
+
+static uint8_t bsp_audio_volume_level_to_position(uint8_t level)
+{
+    uint32_t position_range;
+    uint32_t scaled_position;
+
+    position_range = (uint32_t)BSP_AUDIO_VOLUME_POSITION_MAX -
+                     BSP_AUDIO_VOLUME_POSITION_MIN;
+    scaled_position = ((uint32_t)level * position_range) +
+                      (BSP_AUDIO_VOLUME_LEVEL_SCALE / 2U);
+    return (uint8_t)(BSP_AUDIO_VOLUME_POSITION_MIN +
+                     (scaled_position / BSP_AUDIO_VOLUME_LEVEL_SCALE));
+}
+
+static platform_err_t bsp_audio_volume_position_to_level(
+    uint8_t  position,
+    uint8_t *p_level)
+{
+    uint32_t position_range;
+    uint32_t scaled_level;
+
+    if((NULL == p_level) ||
+       (position < BSP_AUDIO_VOLUME_POSITION_MIN) ||
+       (position > BSP_AUDIO_VOLUME_POSITION_MAX))
+    {
+        return PLATFORM_ERR_HW;
+    }
+
+    position_range = (uint32_t)BSP_AUDIO_VOLUME_POSITION_MAX -
+                     BSP_AUDIO_VOLUME_POSITION_MIN;
+    scaled_level = ((uint32_t)(position - BSP_AUDIO_VOLUME_POSITION_MIN) *
+                    BSP_AUDIO_VOLUME_LEVEL_SCALE) +
+                   (position_range / 2U);
+    *p_level = (uint8_t)(scaled_level / position_range);
+    return PLATFORM_ERR_OK;
+}
 
 static cat5171_ret_t bsp_audio_volume_ret_from_platform(platform_err_t ret)
 {
@@ -137,4 +181,35 @@ platform_err_t bsp_audio_volume_position_get(uint8_t  *p_position,
     }
     return bsp_audio_volume_ret_to_platform(
         cat5171_wiper_read(&audio_volume_device, p_position, timeout_ms));
+}
+
+platform_err_t bsp_audio_volume_level_set(uint8_t  level,
+                                           uint32_t timeout_ms)
+{
+    if((level > BSP_AUDIO_VOLUME_LEVEL_MAX) || (0U == timeout_ms))
+    {
+        return PLATFORM_ERR_PARAM;
+    }
+    return bsp_audio_volume_position_set(
+        bsp_audio_volume_level_to_position(level),
+        timeout_ms);
+}
+
+platform_err_t bsp_audio_volume_level_get(uint8_t  *p_level,
+                                           uint32_t  timeout_ms)
+{
+    platform_err_t ret;
+    uint8_t position;
+
+    if((NULL == p_level) || (0U == timeout_ms))
+    {
+        return PLATFORM_ERR_PARAM;
+    }
+
+    ret = bsp_audio_volume_position_get(&position, timeout_ms);
+    if(PLATFORM_ERR_OK != ret)
+    {
+        return ret;
+    }
+    return bsp_audio_volume_position_to_level(position, p_level);
 }
