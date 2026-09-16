@@ -284,12 +284,32 @@ void start_or_test_f(void *pvParameters)
                  (int32_t)(button_index + 1U));
     }
   }
+  plat_gpio_write(BOARD_GPIO_HUB_OE245,PLAT_GPIO_RESET);
+  plat_delay_ms(100);
+  plat_gpio_write(BOARD_GPIO_HUB_A     ,PLAT_GPIO_SET);
+  plat_gpio_write(BOARD_GPIO_HUB_B     ,PLAT_GPIO_SET);
+  plat_gpio_write(BOARD_GPIO_HUB_C     ,PLAT_GPIO_SET);
+  plat_gpio_write(BOARD_GPIO_HUB_D     ,PLAT_GPIO_SET);
+  plat_gpio_write(BOARD_GPIO_HUB_E     ,PLAT_GPIO_SET);
+  plat_gpio_write(BOARD_GPIO_HUB_LAT   ,PLAT_GPIO_SET);
+  plat_gpio_write(BOARD_GPIO_HUB_R1    ,PLAT_GPIO_SET);
+  plat_gpio_write(BOARD_GPIO_HUB_G1    ,PLAT_GPIO_SET);
+  plat_gpio_write(BOARD_GPIO_HUB_B1    ,PLAT_GPIO_SET);
+  plat_gpio_write(BOARD_GPIO_HUB_R2    ,PLAT_GPIO_SET);
+  plat_gpio_write(BOARD_GPIO_HUB_G2    ,PLAT_GPIO_SET);
+  plat_gpio_write(BOARD_GPIO_HUB_B2    ,PLAT_GPIO_SET);
+  plat_gpio_write(BOARD_GPIO_HUB_SCK   ,PLAT_GPIO_SET);
+//  plat_gpio_write(BOARD_GPIO_HUB_C,PLAT_GPIO_SET);
+//  plat_gpio_write(BOARD_GPIO_HUB_D,PLAT_GPIO_SET);
+//  plat_gpio_write(BOARD_GPIO_HUB_B,PLAT_GPIO_SET);
+//  plat_gpio_write(BOARD_GPIO_HUB_C,PLAT_GPIO_SET);
   /* add user code end start_or_test_f 2 */
 
   /* Infinite loop */
   while(1)
   {
   /* add user code begin start_or_test_f 1 */
+
     now_ms = plat_tick_get_ms();
     for(button_index = 0U;
         button_index < START_TEST_BUTTON_COUNT;
