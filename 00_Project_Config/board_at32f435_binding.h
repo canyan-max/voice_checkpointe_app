@@ -79,6 +79,8 @@ extern "C"
 #define BOARD_GPIO_HUB_B2_PIN            HUB_B2_PD13_PIN
 #define BOARD_GPIO_HUB_SCK_PORT          HUB_SCK_PD15_GPIO_PORT
 #define BOARD_GPIO_HUB_SCK_PIN           HUB_SCK_PD15_PIN
+#define BOARD_GPIO_HUB_OE_PORT           HUB_OE_PC6_GPIO_PORT
+#define BOARD_GPIO_HUB_OE_PIN            HUB_OE_PC6_PIN
 
 /* GPIO inputs */
 #define BOARD_GPIO_TTS_R_B_PORT          TTS_R_B_PB8_GPIO_PORT

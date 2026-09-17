@@ -18,7 +18,7 @@
 #include "audio_playback_app.h"
 #include "audio_volume_service.h"
 #include "button.h"
-#include "led_indicator_app.h"
+#include "voice_presentation_app.h"
 /* add user code end private includes */
 
 /* private typedef -----------------------------------------------------------*/
@@ -192,9 +192,9 @@ void start_or_test_f(void *pvParameters)
   /* add user code begin start_or_test_f 0 */
   platform_err_t log_ret;
   platform_err_t app_ret;
-  platform_err_t led_ret;
   platform_err_t gpio_ret;
   platform_err_t play_ret;
+  platform_err_t presentation_ret;
   platform_err_t volume_ret;
   button_status_t button_ret;
   button_event_t button_event;
@@ -253,8 +253,9 @@ void start_or_test_f(void *pvParameters)
   plat_log_i("Audio volume service init ret=%d, volume=%u%%",
              (int32_t)volume_ret,
              (unsigned int)volume_level);
-  led_ret = led_indicator_app_init();
-  plat_log_i("LED indicator app init=%d", (int32_t)led_ret);
+  presentation_ret = voice_presentation_app_init();
+  plat_log_i("Voice presentation app init=%d, idle display/LEDs=off",
+             (int32_t)presentation_ret);
   app_ret = audio_playback_app_init();
   plat_log_i("Audio app init=%d, SW2=MP3, SW3=volume-5, SW4=volume+5, SW5=VTX316",
              (int32_t)app_ret);
@@ -284,25 +285,6 @@ void start_or_test_f(void *pvParameters)
                  (int32_t)(button_index + 1U));
     }
   }
-  plat_gpio_write(BOARD_GPIO_HUB_OE245,PLAT_GPIO_RESET);
-  plat_delay_ms(100);
-  plat_gpio_write(BOARD_GPIO_HUB_A     ,PLAT_GPIO_SET);
-  plat_gpio_write(BOARD_GPIO_HUB_B     ,PLAT_GPIO_SET);
-  plat_gpio_write(BOARD_GPIO_HUB_C     ,PLAT_GPIO_SET);
-  plat_gpio_write(BOARD_GPIO_HUB_D     ,PLAT_GPIO_SET);
-  plat_gpio_write(BOARD_GPIO_HUB_E     ,PLAT_GPIO_SET);
-  plat_gpio_write(BOARD_GPIO_HUB_LAT   ,PLAT_GPIO_SET);
-  plat_gpio_write(BOARD_GPIO_HUB_R1    ,PLAT_GPIO_SET);
-  plat_gpio_write(BOARD_GPIO_HUB_G1    ,PLAT_GPIO_SET);
-  plat_gpio_write(BOARD_GPIO_HUB_B1    ,PLAT_GPIO_SET);
-  plat_gpio_write(BOARD_GPIO_HUB_R2    ,PLAT_GPIO_SET);
-  plat_gpio_write(BOARD_GPIO_HUB_G2    ,PLAT_GPIO_SET);
-  plat_gpio_write(BOARD_GPIO_HUB_B2    ,PLAT_GPIO_SET);
-  plat_gpio_write(BOARD_GPIO_HUB_SCK   ,PLAT_GPIO_SET);
-//  plat_gpio_write(BOARD_GPIO_HUB_C,PLAT_GPIO_SET);
-//  plat_gpio_write(BOARD_GPIO_HUB_D,PLAT_GPIO_SET);
-//  plat_gpio_write(BOARD_GPIO_HUB_B,PLAT_GPIO_SET);
-//  plat_gpio_write(BOARD_GPIO_HUB_C,PLAT_GPIO_SET);
   /* add user code end start_or_test_f 2 */
 
   /* Infinite loop */

@@ -24,6 +24,7 @@ PROJ="${PROJECTS[0]}"
 
 BUILD_LOG="$PWD/build_log.txt"
 FLASH_LOG="$PWD/flash_log.txt"
+CLANGD_SCRIPT="$PWD/clangdwithkeil.bash"
 
 # ----- 存在性检查 -----
 if [ ! -f "$UV" ]; then
@@ -51,6 +52,14 @@ do_build() {
         exit 1
     fi
     echo "Build succeeded."
+    if [ -f "$CLANGD_SCRIPT" ]; then
+        echo "=== Updating clangd compile database ==="
+        if ! bash "$CLANGD_SCRIPT"; then
+            echo "Warning: clangd compile database generation failed."
+        fi
+    else
+        echo "Warning: clangd script not found: $CLANGD_SCRIPT"
+    fi
     # rm -f "$BUILD_LOG"
 }
 

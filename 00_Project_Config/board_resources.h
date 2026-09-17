@@ -50,6 +50,8 @@ extern "C"
 #define BOARD_GPIO_HUB_G2           ((plat_gpio_id_t)26U)
 #define BOARD_GPIO_HUB_B2           ((plat_gpio_id_t)27U)
 #define BOARD_GPIO_HUB_SCK          ((plat_gpio_id_t)28U)
+/* Appended to preserve the existing input resource IDs. */
+#define BOARD_GPIO_HUB_OE           ((plat_gpio_id_t)37U)
 
 /* GPIO inputs */
 #define BOARD_GPIO_TTS_R_B          ((plat_gpio_id_t)29U)
@@ -60,7 +62,7 @@ extern "C"
 #define BOARD_GPIO_KEY2             ((plat_gpio_id_t)34U)
 #define BOARD_GPIO_KEY3             ((plat_gpio_id_t)35U)
 #define BOARD_GPIO_KEY4             ((plat_gpio_id_t)36U)
-#define BOARD_GPIO_RESOURCE_NUM     ((plat_gpio_id_t)37U)
+#define BOARD_GPIO_RESOURCE_NUM     ((plat_gpio_id_t)38U)
 
 #define BOARD_UART_REMOTE_4G        ((plat_uart_id_t)0U)
 #define BOARD_UART_RS485            ((plat_uart_id_t)1U)

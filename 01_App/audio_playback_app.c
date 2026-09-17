@@ -16,9 +16,9 @@
 #include "audio_playback_app.h"
 #include "audio_pcm_block.h"
 #include "audio_player_service.h"
-#include "led_indicator_app.h"
 #include "mp3_decoder_service.h"
 #include "plat_log.h"
+#include "voice_presentation_app.h"
 
 #define AUDIO_APP_PCM_BLOCK_COUNT             (4U)
 #define AUDIO_APP_START_PREBUFFER_BLOCKS      (AUDIO_APP_PCM_BLOCK_COUNT)
@@ -146,6 +146,8 @@ static void audio_app_voice_request_release(void);
 static void audio_app_player_commands_process(
     audio_app_player_runtime_t *p_runtime);
 static void audio_app_voice_synthesis_process(void);
+static void audio_app_voice_presentation_finish(void);
+static void audio_app_voice_presentation_abort(void);
 static void audio_app_mp3_events_process(
     uint32_t                    notify_bits,
     audio_app_player_runtime_t *p_runtime);
@@ -545,20 +547,48 @@ static void audio_app_voice_synthesis_request_handle(
         AUDIO_APP_VOICE_SYNTHESIS_SEND_TIMEOUT_MS);
     if(PLATFORM_ERR_OK == ret)
     {
-        platform_err_t led_ret;
+        platform_err_t presentation_ret;
 
         plat_log_i("Voice synthesis playback started");
-        led_ret = led_indicator_app_voice_synthesis_started();
-        if(PLATFORM_ERR_OK != led_ret)
+        presentation_ret = voice_presentation_app_start();
+        if(PLATFORM_ERR_OK != presentation_ret)
         {
-            plat_log_e("Voice synthesis LED start failed, ret=%d",
-                       (int32_t)led_ret);
+            plat_log_e("Voice presentation start failed, ret=%d",
+                       (int32_t)presentation_ret);
         }
     }
     else
     {
         plat_log_e("Voice synthesis start failed, ret=%d", (int32_t)ret);
         audio_app_voice_request_release();
+    }
+}
+
+static void audio_app_voice_presentation_finish(void)
+{
+    platform_err_t ret;
+
+    ret = voice_presentation_app_audio_finished();
+    if(PLATFORM_ERR_OK != ret)
+    {
+        plat_log_e("Voice presentation finish failed, ret=%d",
+                   (int32_t)ret);
+    }
+    else
+    {
+        plat_log_i("Voice indicators waiting for scroll completion");
+    }
+}
+
+static void audio_app_voice_presentation_abort(void)
+{
+    platform_err_t ret;
+
+    ret = voice_presentation_app_abort();
+    if(PLATFORM_ERR_OK != ret)
+    {
+        plat_log_e("Voice presentation abort failed, ret=%d",
+                   (int32_t)ret);
     }
 }
 
@@ -572,6 +602,7 @@ static void audio_app_stop_handle(void)
         (AUDIO_PLAYER_SERVICE_STATE_PREPARING == player_state) ||
         (AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344 == player_state));
     audio_app_player_stop(decoder_stop_required);
+    audio_app_voice_presentation_abort();
     if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS == player_state)
     {
         audio_app_voice_request_release();
@@ -593,6 +624,10 @@ static void audio_app_emergency_handle(uint8_t emergency_active)
     ret = audio_player_service_emergency_set(&audio_app_player_service,
                                              emergency_active);
     audio_app_ready_queue_flush();
+    if(0U != emergency_active)
+    {
+        audio_app_voice_presentation_abort();
+    }
     if((0U != emergency_active) &&
        (AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS == player_state))
     {
@@ -655,6 +690,7 @@ static void audio_app_voice_synthesis_process(void)
     if(PLATFORM_ERR_OK != ret)
     {
         plat_log_e("Voice synthesis process failed, ret=%d", (int32_t)ret);
+        audio_app_voice_presentation_abort();
         audio_app_voice_request_release();
         return;
     }
@@ -665,7 +701,9 @@ static void audio_app_voice_synthesis_process(void)
     if(0U != (event & BSP_VOICE_SYNTHESIS_EVENT_COMMAND_REJECTED))
     {
         plat_log_e("Voice synthesis command rejected");
+        audio_app_voice_presentation_abort();
         audio_app_voice_request_release();
+        return;
     }
     if(0U != (event & BSP_VOICE_SYNTHESIS_EVENT_SPEAKING))
     {
@@ -674,6 +712,7 @@ static void audio_app_voice_synthesis_process(void)
     if(0U != (event & BSP_VOICE_SYNTHESIS_EVENT_IDLE))
     {
         plat_log_i("Voice synthesis playback complete");
+        audio_app_voice_presentation_finish();
         audio_app_voice_request_release();
         plat_log_i("Audio player stack min free=%lu words",
                    (unsigned long)uxTaskGetStackHighWaterMark(NULL));

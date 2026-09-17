@@ -1,13 +1,13 @@
 /**
  ******************************************************************************
- *@file               :   led_indicator_app.h
- *@brief              :   Drive product LED indication patterns.
+ *@file               :   voice_presentation_app.h
+ *@brief              :   Coordinate voice captions and LED indication.
  *@version            :   V1.0
  *@note               :   1 tab == 4 spaces!  2026
  ******************************************************************************
  */
-#ifndef LED_INDICATOR_APP_H
-#define LED_INDICATOR_APP_H
+#ifndef VOICE_PRESENTATION_APP_H
+#define VOICE_PRESENTATION_APP_H
 
 #ifdef __cplusplus
 extern "C"
@@ -18,14 +18,16 @@ extern "C"
 #include "plat_error.h"
 
 /* functions ----------------------------------------------------------------*/
-platform_err_t led_indicator_app_init(void);
+platform_err_t voice_presentation_app_init(void);
 
-platform_err_t led_indicator_app_voice_start(void);
+platform_err_t voice_presentation_app_start(void);
 
-platform_err_t led_indicator_app_voice_stop(void);
+platform_err_t voice_presentation_app_audio_finished(void);
+
+platform_err_t voice_presentation_app_abort(void);
 
 #ifdef __cplusplus
 }
 #endif
 
-#endif /* LED_INDICATOR_APP_H */
+#endif /* VOICE_PRESENTATION_APP_H */

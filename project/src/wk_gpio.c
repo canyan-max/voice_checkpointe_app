@@ -82,7 +82,8 @@ void wk_gpio_config(void)
   gpio_bits_reset(GPIOD, HUB_R1_PD8_PIN | HUB_G1_PD9_PIN | HUB_B1_PD10_PIN | HUB_R2_PD11_PIN | HUB_G2_PD12_PIN | 
                   HUB_B2_PD13_PIN | HUB_SCK_PD15_PIN | HUB_A_PD0_PIN | HUB_B_PD1_PIN | HUB_C_PD2_PIN | 
                   HUB_D_PD3_PIN | HUB_E_PD4_PIN | HUB_LAT_PD5_PIN);
-  gpio_bits_reset(GPIOC, LED_OUT_B_PC7_PIN | LED_OUT_R_PC8_PIN | LED_POWER_CS_PC9_PIN);
+  gpio_bits_reset(GPIOC, HUB_OE_PC6_PIN | LED_OUT_B_PC7_PIN | LED_OUT_R_PC8_PIN);
+  gpio_bits_set(LED_POWER_CS_PC9_GPIO_PORT, LED_POWER_CS_PC9_PIN);
   gpio_bits_set(HUB_OE245_PD6_GPIO_PORT, HUB_OE245_PD6_PIN);
   gpio_bits_set(GPIOB, ALARM_OUT_PB7_PIN | TTS_RST_PB9_PIN);
 
@@ -113,7 +114,7 @@ void wk_gpio_config(void)
   gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_MODERATE;
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_OUTPUT;
-  gpio_init_struct.gpio_pins = LED_OUT_B_PC7_PIN | LED_OUT_R_PC8_PIN | LED_POWER_CS_PC9_PIN;
+  gpio_init_struct.gpio_pins = HUB_OE_PC6_PIN | LED_OUT_B_PC7_PIN | LED_OUT_R_PC8_PIN | LED_POWER_CS_PC9_PIN;
   gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
   gpio_init(GPIOC, &gpio_init_struct);
 
@@ -141,11 +142,6 @@ void wk_gpio_config(void)
   gpio_init_struct.gpio_pins = GPIO_PINS_14;
   gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
   gpio_init(GPIOD, &gpio_init_struct);
-
-  gpio_init_struct.gpio_mode = GPIO_MODE_ANALOG;
-  gpio_init_struct.gpio_pins = GPIO_PINS_6;
-  gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
-  gpio_init(GPIOC, &gpio_init_struct);
 
   /* add user code begin gpio_config 2 */
 

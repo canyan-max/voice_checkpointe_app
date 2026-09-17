@@ -63,7 +63,8 @@
 - 已建立板级 LED BSP 和指示 App。
 - `LED1～LED4` 为低电平点亮逻辑的反向配置，当前默认熄灭。
 - `LED4_RUN` 当前按 1 秒周期闪烁。
-- `LED_OUT_R/B` 为高电平点亮，已用于语音合成播放指示测试。
+- `LED_OUT_R/B` 为高电平点亮；VTX316语音指示开始时红灯先亮，之后红/蓝每5秒交替，HUB字幕完整滚完时与屏幕同时熄灭。停止、异常和紧急打断会立即熄灭。
+- `voice_presentation_app` 负责统一编排VTX字幕与红蓝灯；`led_indicator_app` 只管理LED，`hub_display_app` 只管理显示，二者不再直接依赖。
 - `LED_POWER_CS` 属于其他器件电源控制，不纳入普通指示灯逻辑。
 
 ## 3. MP3 播放通路

@@ -707,6 +707,26 @@
               <FileType>5</FileType>
               <FilePath>..\..\01_App\led_indicator_app.h</FilePath>
             </File>
+            <File>
+              <FileName>hub_display_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\01_App\hub_display_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>hub_display_app.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\01_App\hub_display_app.h</FilePath>
+            </File>
+            <File>
+              <FileName>voice_presentation_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\01_App\voice_presentation_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>voice_presentation_app.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\01_App\voice_presentation_app.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -751,6 +771,16 @@
               <FileName>mp3_decoder_service.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\02_Service\mp3_decoder_service.h</FilePath>
+            </File>
+            <File>
+              <FileName>hub_display_service.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\02_Service\hub_display_service.c</FilePath>
+            </File>
+            <File>
+              <FileName>hub_display_service.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\02_Service\hub_display_service.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -807,6 +837,16 @@
               <FileType>5</FileType>
               <FilePath>..\..\03_Platform\bsp\bsp_led.h</FilePath>
             </File>
+            <File>
+              <FileName>bsp_hub_display.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_hub_display.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_hub_display.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_hub_display.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -848,9 +888,6 @@
               <FilePath>..\..\03_Platform\mcu_interface\plat_uart.h</FilePath>
             </File>
           </Files>
-        </Group>
-        <Group>
-          <GroupName>03_Platform/comm</GroupName>
         </Group>
         <Group>
           <GroupName>04_Implmcu_at32</GroupName>

@@ -274,6 +274,7 @@
         <SDIO2_IRQHandler>0;5;0;1;0;0</SDIO2_IRQHandler>
     </NVIC>
     <GPIO>
+        <ShowType>1</ShowType>
         <Signal SignalName="GPIO_Input" PinName="PE2">
             <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="KEY3_PE2"/>
@@ -438,6 +439,9 @@
             <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
             <Parameters name="Label" value="HUB_SCK_PD15"/>
         </Signal>
+        <Signal SignalName="GPIO_Output" PinName="PC6">
+            <Parameters name="Label" value="HUB_OE_PC6"/>
+        </Signal>
         <Signal SignalName="GPIO_Output" PinName="PC7">
             <Parameters name="Label" value="LED_OUT_B_PC7"/>
         </Signal>
@@ -445,6 +449,7 @@
             <Parameters name="Label" value="LED_OUT_R_PC8"/>
         </Signal>
         <Signal SignalName="GPIO_Output" PinName="PC9">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
             <Parameters name="Label" value="LED_POWER_CS_PC9"/>
         </Signal>
         <Signal SignalName="USART2_TX" PinName="PA8">
@@ -618,6 +623,7 @@
         <PinSub pinname="PD12" signalname="GPIO_Output" signaltype="3"/>
         <PinSub pinname="PD13" signalname="GPIO_Output" signaltype="3"/>
         <PinSub pinname="PD15" signalname="GPIO_Output" signaltype="3"/>
+        <PinSub pinname="PC6" signalname="GPIO_Output" signaltype="3"/>
         <PinSub pinname="PC7" signalname="GPIO_Output" signaltype="3"/>
         <PinSub pinname="PC8" signalname="GPIO_Output" signaltype="3"/>
         <PinSub pinname="PC9" signalname="GPIO_Output" signaltype="3"/>
