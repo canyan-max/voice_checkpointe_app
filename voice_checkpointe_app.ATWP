@@ -101,6 +101,8 @@
             <ParametersSub name="Mode" value="SPI_MODE_MASTER"/>
             <ParametersSub name="FirstBit" value="SPI_FIRST_BIT_MSB"/>
             <ParametersSub name="ClockFrequency" value="18000000"/>
+            <ParametersSub name="CLKPolarity" value="SPI_CLOCK_POLARITY_HIGH"/>
+            <ParametersSub name="CLKPhase" value="SPI_CLOCK_PHASE_2EDGE"/>
         </Parameters>
     </SPI3>
     <SYSTEM>

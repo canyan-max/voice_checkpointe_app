@@ -496,6 +496,14 @@ static void audio_app_mp3_request_handle(
         return;
     }
 
+    ret = voice_presentation_app_abort();
+    if(PLATFORM_ERR_OK != ret)
+    {
+        plat_log_e("Voice presentation abort before MP3 failed, ret=%d",
+                   (int32_t)ret);
+        return;
+    }
+
     p_runtime->session_id++;
     if(0U == p_runtime->session_id)
     {
