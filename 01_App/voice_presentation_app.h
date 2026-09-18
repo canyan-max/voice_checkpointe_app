@@ -26,7 +26,11 @@ platform_err_t voice_presentation_app_start(const uint8_t *p_gbk_text,
 
 platform_err_t voice_presentation_app_audio_finished(void);
 
+platform_err_t voice_presentation_app_process(void);
+
 platform_err_t voice_presentation_app_abort(void);
+
+uint8_t voice_presentation_app_is_active(void);
 
 #ifdef __cplusplus
 }

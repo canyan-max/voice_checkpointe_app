@@ -794,6 +794,7 @@ static void audio_app_player_task(void *p_parameter)
     audio_player_service_state_t player_state;
     platform_err_t ret;
     uint32_t notify_bits;
+    TickType_t wait_ticks;
 
     (void)p_parameter;
     ret = audio_player_service_init(&audio_app_player_service,
@@ -812,20 +813,31 @@ static void audio_app_player_task(void *p_parameter)
         notify_bits = 0U;
         player_state = audio_player_service_state_get(
             &audio_app_player_service);
+        wait_ticks = ((AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS ==
+                       player_state) ||
+                      (0U != voice_presentation_app_is_active())) ?
+                     pdMS_TO_TICKS(AUDIO_APP_VOICE_SYNTHESIS_POLL_MS) :
+                     portMAX_DELAY;
         (void)xTaskNotifyWait(
             0U,
             UINT32_MAX,
             &notify_bits,
-            (AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS ==
-             player_state) ?
-                pdMS_TO_TICKS(AUDIO_APP_VOICE_SYNTHESIS_POLL_MS) :
-                portMAX_DELAY);
+            wait_ticks);
 
         if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_COMMAND))
         {
             audio_app_player_commands_process(&runtime);
         }
         audio_app_voice_synthesis_process();
+        if(0U != voice_presentation_app_is_active())
+        {
+            ret = voice_presentation_app_process();
+            if(PLATFORM_ERR_OK != ret)
+            {
+                plat_log_e("Voice presentation process failed, ret=%d",
+                           (int32_t)ret);
+            }
+        }
         audio_app_mp3_events_process(notify_bits, &runtime);
     }
 }

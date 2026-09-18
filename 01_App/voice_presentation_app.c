@@ -172,6 +172,31 @@ platform_err_t voice_presentation_app_audio_finished(void)
     return ret;
 }
 
+platform_err_t voice_presentation_app_process(void)
+{
+    platform_err_t ret;
+
+    if(0U == voice_presentation_initialized)
+    {
+        return PLATFORM_ERR_HW;
+    }
+    if(VOICE_PRESENTATION_STATE_IDLE == voice_presentation_state_get())
+    {
+        return PLATFORM_ERR_OK;
+    }
+
+    ret = hub_display_app_process();
+    if(PLATFORM_ERR_OK != ret)
+    {
+        taskENTER_CRITICAL();
+        voice_presentation_state = VOICE_PRESENTATION_STATE_IDLE;
+        taskEXIT_CRITICAL();
+        (void)hub_display_app_hide();
+        (void)led_indicator_app_voice_stop();
+    }
+    return ret;
+}
+
 platform_err_t voice_presentation_app_abort(void)
 {
     platform_err_t ret;
@@ -193,6 +218,12 @@ platform_err_t voice_presentation_app_abort(void)
         ret = led_ret;
     }
     return ret;
+}
+
+uint8_t voice_presentation_app_is_active(void)
+{
+    return (VOICE_PRESENTATION_STATE_IDLE !=
+            voice_presentation_state_get()) ? 1U : 0U;
 }
 
 /* end of file --------------------------------------------------------------*/

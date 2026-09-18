@@ -39,9 +39,13 @@ platform_err_t hub_display_app_finish_scroll(
     hub_display_app_finish_callback_t callback,
     void                             *p_context);
 
+platform_err_t hub_display_app_process(void);
+
 platform_err_t hub_display_app_hide(void);
 
 platform_err_t hub_display_app_status_get(void);
+
+uint8_t hub_display_app_is_visible(void);
 
 #ifdef __cplusplus
 }
