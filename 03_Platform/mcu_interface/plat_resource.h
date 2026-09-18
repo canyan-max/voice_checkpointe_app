@@ -23,6 +23,7 @@ typedef uint8_t plat_gpio_id_t;
 typedef uint8_t plat_uart_id_t;
 typedef uint8_t plat_i2s_id_t;
 typedef uint8_t plat_i2c_id_t;
+typedef uint8_t plat_spi_id_t;
 
 #ifdef __cplusplus
 }

@@ -558,7 +558,9 @@ static void audio_app_voice_synthesis_request_handle(
         platform_err_t presentation_ret;
 
         plat_log_i("Voice synthesis playback started");
-        presentation_ret = voice_presentation_app_start();
+        presentation_ret = voice_presentation_app_start(
+                               audio_app_voice_text,
+                               p_command->voice_text_size);
         if(PLATFORM_ERR_OK != presentation_ret)
         {
             plat_log_e("Voice presentation start failed, ret=%d",

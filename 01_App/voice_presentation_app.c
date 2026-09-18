@@ -85,10 +85,15 @@ platform_err_t voice_presentation_app_init(void)
     return PLATFORM_ERR_OK;
 }
 
-platform_err_t voice_presentation_app_start(void)
+platform_err_t voice_presentation_app_start(const uint8_t *p_gbk_text,
+                                             uint16_t       text_size)
 {
     platform_err_t ret;
 
+    if((NULL == p_gbk_text) || (0U == text_size))
+    {
+        return PLATFORM_ERR_PARAM;
+    }
     if(0U == voice_presentation_initialized)
     {
         return PLATFORM_ERR_HW;
@@ -103,13 +108,18 @@ platform_err_t voice_presentation_app_start(void)
         }
     }
 
-    ret = hub_display_app_show(HUB_DISPLAY_APP_MODE_SCROLL);
+    ret = hub_display_app_show_gbk(p_gbk_text,
+                                   text_size,
+                                   HUB_DISPLAY_APP_MODE_SCROLL);
     if(PLATFORM_ERR_BUSY == ret)
     {
         ret = hub_display_app_hide();
         if(PLATFORM_ERR_OK == ret)
         {
-            ret = hub_display_app_show(HUB_DISPLAY_APP_MODE_SCROLL);
+            ret = hub_display_app_show_gbk(
+                      p_gbk_text,
+                      text_size,
+                      HUB_DISPLAY_APP_MODE_SCROLL);
         }
     }
     if(PLATFORM_ERR_OK != ret)

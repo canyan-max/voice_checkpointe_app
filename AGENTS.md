@@ -26,9 +26,14 @@
 
 - Flash 1024 KiB；SRAM 384 KiB；主栈 2 KiB；FreeRTOS 堆 64 KiB。实际值以工程文件为准。
 - 禁止使用 `malloc`/`free`；动态内存只能使用 FreeRTOS 分配接口，并说明所有权、释放时机和失败处理。
-- 任务栈必须通过栈高水位验证。UART 中断响应目标小于 10 μs，控制环路目标为 1 kHz。
+- 任务栈必须通过栈高水位验证。
 - `project/` 中厂商生成文件优先只改 user code 区；不得擅自改写生成结构或迁移现有代码。
 - libraries和middlewares是厂商文件，基本不用修改，修改前需询问，最好是不修改。
+- 临界区必须尽量短，内部禁止执行阻塞、延时、日志输出、外设等待等耗时操作。
+- 在任务上下文使用 `taskENTER_CRITICAL()` 后，必须确保每一条控制流路径均配套执行一次 `taskEXIT_CRITICAL()`，任何 `return` 或错误分支不得绕过退出操作。
+- 在中断上下文必须使用 `taskENTER_CRITICAL_FROM_ISR()` 和 `taskEXIT_CRITICAL_FROM_ISR()`，并正确保存、恢复中断屏蔽状态；禁止在 ISR 中使用任务上下文版本。
+- `taskENTER_CRITICAL()` 只屏蔽 FreeRTOS 配置范围内的中断，不得将其视为关闭全部中断。
+- 任务间的长期互斥优先使用互斥量、队列或任务通知；临界区只用于保护耗时极短的共享状态读写。
 
 ## 3. 构建与烧录
 

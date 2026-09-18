@@ -15,9 +15,9 @@
 #include "led_indicator_app.h"
 
 /* define -------------------------------------------------------------------*/
-#define LED_INDICATOR_TIMER_PERIOD_MS       100U
-#define LED_INDICATOR_RUN_TOGGLE_MS         500U
-#define LED_INDICATOR_VOICE_TOGGLE_MS      5000U
+#define LED_INDICATOR_TIMER_PERIOD_MS       (100U)
+#define LED_INDICATOR_RUN_TOGGLE_MS         (500U)
+#define LED_INDICATOR_VOICE_TOGGLE_MS      (2000U)
 
 /* variables ----------------------------------------------------------------*/
 static StaticTimer_t led_indicator_timer_control;

@@ -94,13 +94,13 @@
     <SPI3>
         <Mode>
             <ModeSub name="Mode" value="Full_Duplex_Master"/>
-            <ModeSub name="CS_Signal" value="CS_Signal_Hard_Output"/>
         </Mode>
         <Parameters>
             <ParametersSub name="TransmissionMode" value="SPI_TRANSMIT_FULL_DUPLEX"/>
             <ParametersSub name="Mode" value="SPI_MODE_MASTER"/>
             <ParametersSub name="FirstBit" value="SPI_FIRST_BIT_MSB"/>
-            <ParametersSub name="ClockFrequency" value="18000000"/>
+            <ParametersSub name="ClkDivision" value="SPI_MCLK_DIV_2"/>
+            <ParametersSub name="ClockFrequency" value="36000000"/>
             <ParametersSub name="CLKPolarity" value="SPI_CLOCK_POLARITY_HIGH"/>
             <ParametersSub name="CLKPhase" value="SPI_CLOCK_PHASE_2EDGE"/>
         </Parameters>
@@ -473,7 +473,9 @@
             <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="EEPROM_SCL_PH2"/>
         </Signal>
-        <Signal SignalName="SPI3_CS" PinName="PA15">
+        <Signal SignalName="GPIO_Output" PinName="PA15">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
+            <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
             <Parameters name="Label" value="SPI3GT_CS_PA15"/>
         </Signal>
         <Signal SignalName="GPIO_Input" PinName="PC10">
@@ -637,7 +639,7 @@
         <PinSub pinname="PA13" signalname="DEBUG_JTMS_SWDIO" signaltype="2"/>
         <PinSub pinname="PH2" signalname="I2C2_SCL" signaltype="3"/>
         <PinSub pinname="PA14" signalname="DEBUG_JTCK_SWCLK" signaltype="2"/>
-        <PinSub pinname="PA15" signalname="SPI3_CS" signaltype="3"/>
+        <PinSub pinname="PA15" signalname="GPIO_Output" signaltype="3"/>
         <PinSub pinname="PC10" signalname="GPIO_Input" signaltype="3"/>
         <PinSub pinname="PC11" signalname="QSPI1_CS" signaltype="2"/>
         <PinSub pinname="PC12" signalname="I2C2_SDA" signaltype="2"/>

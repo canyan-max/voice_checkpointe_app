@@ -15,7 +15,9 @@
 #include "hub_display_service.h"
 
 /* define -------------------------------------------------------------------*/
-#define HUB_DISPLAY_APP_ROW_PERIOD_MS       5U
+#define HUB_DISPLAY_APP_ROW_PERIOD_MS       (4U)
+#define HUB_DISPLAY_APP_FINISH_STEP_FRAMES  (2U)
+#define HUB_DISPLAY_APP_FONT_READ_TIMEOUT_MS (100U)
 
 /* variables ----------------------------------------------------------------*/
 static StaticTimer_t hub_display_app_timer_control;
@@ -128,12 +130,16 @@ platform_err_t hub_display_app_init(void)
     return PLATFORM_ERR_OK;
 }
 
-platform_err_t hub_display_app_show(hub_display_app_mode_t mode)
+platform_err_t hub_display_app_show_gbk(
+    const uint8_t         *p_text,
+    uint16_t               text_size,
+    hub_display_app_mode_t mode)
 {
     platform_err_t ret;
     uint8_t scroll_enabled;
 
-    if((0U == hub_display_app_initialized) ||
+    if((NULL == p_text) || (0U == text_size) ||
+       (0U == hub_display_app_initialized) ||
        (HUB_DISPLAY_APP_MODE_COUNT <= mode))
     {
         return PLATFORM_ERR_PARAM;
@@ -141,6 +147,17 @@ platform_err_t hub_display_app_show(hub_display_app_mode_t mode)
     if(0U != hub_display_app_visible)
     {
         return PLATFORM_ERR_BUSY;
+    }
+
+    ret = hub_display_service_gbk_text_set(
+              &hub_display_app_service,
+              p_text,
+              text_size,
+              HUB_DISPLAY_APP_FONT_READ_TIMEOUT_MS);
+    if(PLATFORM_ERR_OK != ret)
+    {
+        hub_display_app_last_error = ret;
+        return ret;
     }
 
     scroll_enabled = (HUB_DISPLAY_APP_MODE_SCROLL == mode) ? 1U : 0U;
@@ -189,6 +206,13 @@ platform_err_t hub_display_app_finish_scroll(
     if(PLATFORM_ERR_OK != hub_display_service_scroll_cycle_count_get(
             &hub_display_app_service,
             &hub_display_app_finish_start_cycle))
+    {
+        return PLATFORM_ERR_HW;
+    }
+
+    if(PLATFORM_ERR_OK != hub_display_service_scroll_step_frames_set(
+            &hub_display_app_service,
+            HUB_DISPLAY_APP_FINISH_STEP_FRAMES))
     {
         return PLATFORM_ERR_HW;
     }

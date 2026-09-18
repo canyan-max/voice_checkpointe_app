@@ -129,6 +129,10 @@ extern "C"
 
 #define BOARD_I2C_SHARED_INSTANCE             I2C2
 
+#define BOARD_SPI_FONT_ROM_INSTANCE           SPI3
+#define BOARD_SPI_FONT_ROM_CS_PORT            GPIOA
+#define BOARD_SPI_FONT_ROM_CS_PIN             GPIO_PINS_15
+
 /* typedef ------------------------------------------------------------------*/
 
 /* variables ----------------------------------------------------------------*/

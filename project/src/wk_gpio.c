@@ -84,6 +84,7 @@ void wk_gpio_config(void)
                   HUB_D_PD3_PIN | HUB_E_PD4_PIN | HUB_LAT_PD5_PIN);
   gpio_bits_reset(GPIOC, HUB_OE_PC6_PIN | LED_OUT_B_PC7_PIN | LED_OUT_R_PC8_PIN);
   gpio_bits_set(LED_POWER_CS_PC9_GPIO_PORT, LED_POWER_CS_PC9_PIN);
+  gpio_bits_set(SPI3GT_CS_PA15_GPIO_PORT, SPI3GT_CS_PA15_PIN);
   gpio_bits_set(HUB_OE245_PD6_GPIO_PORT, HUB_OE245_PD6_PIN);
   gpio_bits_set(GPIOB, ALARM_OUT_PB7_PIN | TTS_RST_PB9_PIN);
 
@@ -117,6 +118,13 @@ void wk_gpio_config(void)
   gpio_init_struct.gpio_pins = HUB_OE_PC6_PIN | LED_OUT_B_PC7_PIN | LED_OUT_R_PC8_PIN | LED_POWER_CS_PC9_PIN;
   gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
   gpio_init(GPIOC, &gpio_init_struct);
+
+  gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_STRONGER;
+  gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
+  gpio_init_struct.gpio_mode = GPIO_MODE_OUTPUT;
+  gpio_init_struct.gpio_pins = SPI3GT_CS_PA15_PIN;
+  gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
+  gpio_init(SPI3GT_CS_PA15_GPIO_PORT, &gpio_init_struct);
 
   gpio_init_struct.gpio_drive_strength = GPIO_DRIVE_STRENGTH_MODERATE;
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;

@@ -1,7 +1,7 @@
 /**
  ******************************************************************************
  *@file               :   hub_display_service.c
- *@brief              :   Prepare and advance the vendor HUB12 test pattern.
+ *@brief              :   Prepare and advance HUB12 GB2312 captions.
  *@version            :   V1.0
  *@note               :   1 tab == 4 spaces!  2026
  ******************************************************************************
@@ -9,51 +9,18 @@
 
 /* Includes -----------------------------------------------------------------*/
 #include <stddef.h>
+#include <string.h>
 #include "hub_display_service.h"
 
 /* define -------------------------------------------------------------------*/
-#define HUB_DISPLAY_GLYPH_BYTES                 32U
-#define HUB_DISPLAY_GLYPH_COUNT                  4U
-#define HUB_DISPLAY_VENDOR_SLOT_COUNT            5U
+#define HUB_DISPLAY_STAGING_SLOT_COUNT           5U
 #define HUB_DISPLAY_VISIBLE_SLOT_COUNT           4U
-#define HUB_DISPLAY_VENDOR_BLOCK_BYTES          16U
-#define HUB_DISPLAY_VENDOR_STEP_COUNT            16U
-#define HUB_DISPLAY_SCROLL_STEP_FRAMES            5U
-#define HUB_DISPLAY_GLYPH_PHASE_COUNT \
-    (HUB_DISPLAY_GLYPH_COUNT + HUB_DISPLAY_VISIBLE_SLOT_COUNT + 1U)
-
-/* variables ----------------------------------------------------------------*/
-static const uint8_t hub_display_vendor_glyph
-[HUB_DISPLAY_GLYPH_COUNT][HUB_DISPLAY_GLYPH_BYTES] =
-{
-    {
-        0x10U, 0x60U, 0x02U, 0x8CU, 0x00U, 0x08U, 0x08U, 0x08U,
-        0x09U, 0xFAU, 0x08U, 0x08U, 0x08U, 0x08U, 0x00U, 0x00U,
-        0x04U, 0x04U, 0x7EU, 0x01U, 0x40U, 0x40U, 0x41U, 0x41U,
-        0x41U, 0x7FU, 0x41U, 0x41U, 0x41U, 0x41U, 0x40U, 0x00U
-    },
-    {
-        0x10U, 0x10U, 0x12U, 0xD2U, 0x56U, 0x5AU, 0x52U, 0x53U,
-        0x52U, 0x5AU, 0x56U, 0xD2U, 0x12U, 0x10U, 0x10U, 0x00U,
-        0x40U, 0x30U, 0x00U, 0x77U, 0x85U, 0x85U, 0x8DU, 0xB5U,
-        0x85U, 0x85U, 0x85U, 0xE7U, 0x00U, 0x10U, 0x60U, 0x00U
-    },
-    {
-        0x80U, 0x90U, 0x8CU, 0x84U, 0x84U, 0x84U, 0xF5U, 0x86U,
-        0x84U, 0x84U, 0x84U, 0x84U, 0x94U, 0x8CU, 0x80U, 0x00U,
-        0x00U, 0x80U, 0x80U, 0x84U, 0x46U, 0x49U, 0x28U, 0x10U,
-        0x10U, 0x2CU, 0x23U, 0x40U, 0x80U, 0x00U, 0x00U, 0x00U
-    },
-    {
-        0x80U, 0x80U, 0x40U, 0x20U, 0x50U, 0x48U, 0x44U, 0xC3U,
-        0x44U, 0x48U, 0x50U, 0x20U, 0x40U, 0x80U, 0x80U, 0x00U,
-        0x00U, 0x40U, 0x40U, 0x44U, 0x44U, 0x44U, 0x44U, 0x7FU,
-        0x44U, 0x44U, 0x44U, 0x44U, 0x40U, 0x40U, 0x00U, 0x00U
-    }
-};
-
+#define HUB_DISPLAY_GLYPH_HALF_BYTES            16U
+#define HUB_DISPLAY_GLYPH_STEP_COUNT             16U
+#define HUB_DISPLAY_SCROLL_STEP_FRAMES_NORMAL     5U
+#define HUB_DISPLAY_ASCII_COLUMN_OFFSET            4U
 /* private functions --------------------------------------------------------*/
-static uint8_t hub_display_service_vendor_source_get(
+static uint8_t hub_display_service_stream_source_get(
     const hub_display_service_t *p_service,
     uint16_t source_index)
 {
@@ -62,14 +29,16 @@ static uint8_t hub_display_service_vendor_source_get(
     uint8_t stream_position;
     uint8_t glyph_index;
 
-    if((HUB_DISPLAY_VENDOR_SLOT_COUNT * HUB_DISPLAY_GLYPH_BYTES) <=
+    if((HUB_DISPLAY_STAGING_SLOT_COUNT *
+        BSP_FONT_ROM_GB2312_GLYPH_16X16_SIZE) <=
             source_index)
     {
         return 0U;
     }
 
-    staging_slot = (uint8_t)(source_index / HUB_DISPLAY_GLYPH_BYTES);
-    glyph_byte = source_index % HUB_DISPLAY_GLYPH_BYTES;
+    staging_slot = (uint8_t)(source_index /
+                             BSP_FONT_ROM_GB2312_GLYPH_16X16_SIZE);
+    glyph_byte = source_index % BSP_FONT_ROM_GB2312_GLYPH_16X16_SIZE;
     stream_position = (uint8_t)(p_service->glyph_phase + staging_slot);
 
     if(HUB_DISPLAY_VISIBLE_SLOT_COUNT > stream_position)
@@ -79,15 +48,15 @@ static uint8_t hub_display_service_vendor_source_get(
 
     glyph_index = stream_position - HUB_DISPLAY_VISIBLE_SLOT_COUNT;
 
-    if(HUB_DISPLAY_GLYPH_COUNT <= glyph_index)
+    if(p_service->glyph_count <= glyph_index)
     {
         return 0U;
     }
 
-    return hub_display_vendor_glyph[glyph_index][glyph_byte];
+    return p_service->glyph_data[glyph_index][glyph_byte];
 }
 
-static uint8_t hub_display_service_vendor_byte_get(
+static uint8_t hub_display_service_scroll_byte_get(
     const hub_display_service_t *p_service,
     uint8_t block,
     uint8_t column)
@@ -98,27 +67,28 @@ static uint8_t hub_display_service_vendor_byte_get(
     uint8_t shift;
 
     current_index = (uint16_t)column +
-                    ((uint16_t)block * HUB_DISPLAY_VENDOR_BLOCK_BYTES);
+                    ((uint16_t)block * HUB_DISPLAY_GLYPH_HALF_BYTES);
 
-    if(8U > p_service->vendor_step)
+    if(8U > p_service->scroll_pixel_step)
     {
-        shift = p_service->vendor_step;
-        current_byte = hub_display_service_vendor_source_get(
+        shift = p_service->scroll_pixel_step;
+        current_byte = hub_display_service_stream_source_get(
                            p_service,
                            current_index);
-        next_byte = hub_display_service_vendor_source_get(
+        next_byte = hub_display_service_stream_source_get(
                         p_service,
-                        current_index + HUB_DISPLAY_VENDOR_BLOCK_BYTES);
+                        current_index + HUB_DISPLAY_GLYPH_HALF_BYTES);
     }
     else
     {
-        shift = p_service->vendor_step - 8U;
-        current_byte = hub_display_service_vendor_source_get(
+        shift = p_service->scroll_pixel_step - 8U;
+        current_byte = hub_display_service_stream_source_get(
                            p_service,
-                           current_index + HUB_DISPLAY_VENDOR_BLOCK_BYTES);
-        next_byte = hub_display_service_vendor_source_get(
+                           current_index + HUB_DISPLAY_GLYPH_HALF_BYTES);
+        next_byte = hub_display_service_stream_source_get(
                         p_service,
-                        current_index + (2U * HUB_DISPLAY_VENDOR_BLOCK_BYTES));
+                        current_index + (2U *
+                                         HUB_DISPLAY_GLYPH_HALF_BYTES));
     }
 
     if(0U == shift)
@@ -149,7 +119,7 @@ static void hub_display_service_scan_data_prepare(
             for(group = 0U; group < HUB_DISPLAY_VISIBLE_SLOT_COUNT; group++)
             {
                 p_service->scan_data[row][output_index] =
-                    hub_display_service_vendor_byte_get(
+                    hub_display_service_scroll_byte_get(
                         p_service,
                         (uint8_t)((2U * HUB_DISPLAY_VISIBLE_SLOT_COUNT - 1U) -
                                   source_block),
@@ -166,14 +136,15 @@ static void hub_display_service_scan_data_prepare(
 static void hub_display_service_animation_advance(
     hub_display_service_t *p_service)
 {
-    p_service->vendor_step++;
+    p_service->scroll_pixel_step++;
 
-    if(HUB_DISPLAY_VENDOR_STEP_COUNT <= p_service->vendor_step)
+    if(HUB_DISPLAY_GLYPH_STEP_COUNT <= p_service->scroll_pixel_step)
     {
-        p_service->vendor_step = 0U;
+        p_service->scroll_pixel_step = 0U;
         p_service->glyph_phase++;
 
-        if(HUB_DISPLAY_GLYPH_PHASE_COUNT <= p_service->glyph_phase)
+        if((p_service->glyph_count + HUB_DISPLAY_VISIBLE_SLOT_COUNT + 1U) <=
+                p_service->glyph_phase)
         {
             p_service->glyph_phase = 0U;
             p_service->scroll_cycle_count++;
@@ -194,8 +165,10 @@ platform_err_t hub_display_service_init(hub_display_service_t *p_service)
     }
 
     p_service->current_row = 0U;
+    p_service->glyph_count = 0U;
     p_service->animation_frame_count = 0U;
-    p_service->vendor_step = 0U;
+    p_service->scroll_step_frames = HUB_DISPLAY_SCROLL_STEP_FRAMES_NORMAL;
+    p_service->scroll_pixel_step = 0U;
     p_service->glyph_phase = HUB_DISPLAY_VISIBLE_SLOT_COUNT;
     p_service->scroll_cycle_count = 0U;
     p_service->scroll_enabled = 0U;
@@ -203,7 +176,11 @@ platform_err_t hub_display_service_init(hub_display_service_t *p_service)
     p_service->initialized = 0U;
     hub_display_service_scan_data_prepare(p_service);
 
-    ret = bsp_hub_display_init();
+    ret = bsp_font_rom_init();
+    if(PLATFORM_ERR_OK == ret)
+    {
+        ret = bsp_hub_display_init();
+    }
 
     if(PLATFORM_ERR_OK == ret)
     {
@@ -213,12 +190,109 @@ platform_err_t hub_display_service_init(hub_display_service_t *p_service)
     return ret;
 }
 
+platform_err_t hub_display_service_gbk_text_set(
+    hub_display_service_t *p_service,
+    const uint8_t         *p_text,
+    uint16_t               text_size,
+    uint32_t               timeout_ms)
+{
+    platform_err_t ret;
+    uint16_t text_index;
+    uint16_t glyph_count;
+    uint16_t glyph_index;
+    uint8_t ascii_bitmap[BSP_FONT_ROM_ASCII_GLYPH_8X16_SIZE];
+    uint8_t ascii_column;
+
+    if((NULL == p_service) || (NULL == p_text) || (0U == text_size) ||
+       (0U == timeout_ms) || (0U == p_service->initialized) ||
+       (0U != p_service->active))
+    {
+        return PLATFORM_ERR_PARAM;
+    }
+
+    text_index = 0U;
+    glyph_count = 0U;
+    while(text_index < text_size)
+    {
+        if((p_text[text_index] >= 0x20U) &&
+           (p_text[text_index] <= 0x7EU))
+        {
+            text_index++;
+        }
+        else
+        {
+            if((p_text[text_index] < 0xA1U) ||
+               ((text_index + 1U) >= text_size))
+            {
+                return PLATFORM_ERR_PARAM;
+            }
+            text_index += 2U;
+        }
+        glyph_count++;
+        if(glyph_count > HUB_DISPLAY_SERVICE_MAX_GLYPHS)
+        {
+            return PLATFORM_ERR_PARAM;
+        }
+    }
+
+    p_service->glyph_count = 0U;
+    text_index = 0U;
+    glyph_index = 0U;
+    while(text_index < text_size)
+    {
+        if((p_text[text_index] >= 0x20U) &&
+           (p_text[text_index] <= 0x7EU))
+        {
+            ret = bsp_font_rom_ascii_8x16_read(
+                      p_text[text_index],
+                      ascii_bitmap,
+                      (uint16_t)sizeof(ascii_bitmap),
+                      timeout_ms);
+            if(PLATFORM_ERR_OK == ret)
+            {
+                memset(p_service->glyph_data[glyph_index],
+                       0,
+                       BSP_FONT_ROM_GB2312_GLYPH_16X16_SIZE);
+                for(ascii_column = 0U; ascii_column < 8U; ascii_column++)
+                {
+                    p_service->glyph_data[glyph_index]
+                        [HUB_DISPLAY_ASCII_COLUMN_OFFSET + ascii_column] =
+                            ascii_bitmap[ascii_column];
+                    p_service->glyph_data[glyph_index]
+                        [16U + HUB_DISPLAY_ASCII_COLUMN_OFFSET +
+                         ascii_column] = ascii_bitmap[8U + ascii_column];
+                }
+            }
+            text_index++;
+        }
+        else
+        {
+            ret = bsp_font_rom_gb2312_16x16_read(
+                      p_text[text_index],
+                      p_text[text_index + 1U],
+                      p_service->glyph_data[glyph_index],
+                      BSP_FONT_ROM_GB2312_GLYPH_16X16_SIZE,
+                      timeout_ms);
+            text_index += 2U;
+        }
+        if(PLATFORM_ERR_OK != ret)
+        {
+            return ret;
+        }
+        glyph_index++;
+    }
+
+    p_service->glyph_count = (uint8_t)glyph_count;
+    return PLATFORM_ERR_OK;
+}
+
 platform_err_t hub_display_service_start(hub_display_service_t *p_service,
                                          uint8_t scroll_enabled)
 {
     platform_err_t ret;
 
     if((NULL == p_service) || (0U == p_service->initialized) ||
+       (0U == p_service->glyph_count) ||
        (1U < scroll_enabled))
     {
         return PLATFORM_ERR_PARAM;
@@ -230,7 +304,8 @@ platform_err_t hub_display_service_start(hub_display_service_t *p_service,
 
     p_service->current_row = 0U;
     p_service->animation_frame_count = 0U;
-    p_service->vendor_step = 0U;
+    p_service->scroll_step_frames = HUB_DISPLAY_SCROLL_STEP_FRAMES_NORMAL;
+    p_service->scroll_pixel_step = 0U;
     p_service->glyph_phase = (0U != scroll_enabled) ?
                              0U : HUB_DISPLAY_VISIBLE_SLOT_COUNT;
     p_service->scroll_cycle_count = 0U;
@@ -274,7 +349,7 @@ platform_err_t hub_display_service_refresh(hub_display_service_t *p_service)
             {
                 p_service->animation_frame_count++;
 
-                if(HUB_DISPLAY_SCROLL_STEP_FRAMES <=
+                if(p_service->scroll_step_frames <=
                         p_service->animation_frame_count)
                 {
                     p_service->animation_frame_count = 0U;
@@ -285,6 +360,24 @@ platform_err_t hub_display_service_refresh(hub_display_service_t *p_service)
     }
 
     return ret;
+}
+
+platform_err_t hub_display_service_scroll_step_frames_set(
+    hub_display_service_t *p_service,
+    uint8_t                step_frames)
+{
+    if((NULL == p_service) || (0U == step_frames) ||
+       (0U == p_service->initialized))
+    {
+        return PLATFORM_ERR_PARAM;
+    }
+    if(0U == p_service->active)
+    {
+        return PLATFORM_ERR_BUSY;
+    }
+
+    p_service->scroll_step_frames = step_frames;
+    return PLATFORM_ERR_OK;
 }
 
 platform_err_t hub_display_service_scroll_cycle_count_get(
@@ -313,7 +406,8 @@ platform_err_t hub_display_service_stop(hub_display_service_t *p_service)
     ret = bsp_hub_display_stop();
     p_service->current_row = 0U;
     p_service->animation_frame_count = 0U;
-    p_service->vendor_step = 0U;
+    p_service->scroll_step_frames = HUB_DISPLAY_SCROLL_STEP_FRAMES_NORMAL;
+    p_service->scroll_pixel_step = 0U;
     p_service->glyph_phase = HUB_DISPLAY_VISIBLE_SLOT_COUNT;
     p_service->scroll_cycle_count = 0U;
     p_service->scroll_enabled = 0U;

@@ -15,12 +15,14 @@ extern "C"
 #endif
 
 /* Includes -----------------------------------------------------------------*/
+#include <stdint.h>
 #include "plat_error.h"
 
 /* functions ----------------------------------------------------------------*/
 platform_err_t voice_presentation_app_init(void);
 
-platform_err_t voice_presentation_app_start(void);
+platform_err_t voice_presentation_app_start(const uint8_t *p_gbk_text,
+                                             uint16_t       text_size);
 
 platform_err_t voice_presentation_app_audio_finished(void);
 

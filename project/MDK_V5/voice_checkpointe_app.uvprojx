@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>AT32F435VGT7, USE_STDPERIPH_DRIVER, USE_DEBUG_LOG</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\04_Impl\mcu_at32;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\06_Component\ExternalChip\VTX316;..\..\06_Component\ExternalChip\CAT5171;..\..\06_Component\Button;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
+              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\04_Impl\mcu_at32;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\06_Component\ExternalChip\VTX316;..\..\06_Component\ExternalChip\CAT5171;..\..\06_Component\ExternalChip\GT20L16S1Y;..\..\06_Component\Button;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -847,6 +847,16 @@
               <FileType>5</FileType>
               <FilePath>..\..\03_Platform\bsp\bsp_hub_display.h</FilePath>
             </File>
+            <File>
+              <FileName>bsp_font_rom.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_font_rom.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_font_rom.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_font_rom.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -866,6 +876,11 @@
               <FileName>plat_i2c.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\03_Platform\mcu_interface\plat_i2c.h</FilePath>
+            </File>
+            <File>
+              <FileName>plat_spi.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\03_Platform\mcu_interface\plat_spi.h</FilePath>
             </File>
             <File>
               <FileName>plat_log.h</FileName>
@@ -906,6 +921,11 @@
               <FileName>at32f435_i2c.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\04_Impl\mcu_at32\at32f435_i2c.c</FilePath>
+            </File>
+            <File>
+              <FileName>at32f435_spi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\04_Impl\mcu_at32\at32f435_spi.c</FilePath>
             </File>
             <File>
               <FileName>at32f435_log.c</FileName>
@@ -966,6 +986,16 @@
               <FileName>cat5171.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\06_Component\ExternalChip\CAT5171\cat5171.h</FilePath>
+            </File>
+            <File>
+              <FileName>gt20l16s1y.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\06_Component\ExternalChip\GT20L16S1Y\gt20l16s1y.c</FilePath>
+            </File>
+            <File>
+              <FileName>gt20l16s1y.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\06_Component\ExternalChip\GT20L16S1Y\gt20l16s1y.h</FilePath>
             </File>
           </Files>
         </Group>
