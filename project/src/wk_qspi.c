@@ -106,7 +106,7 @@ void wk_qspi1_init(void)
  /* configure param */
   qspi_xip_enable(QSPI1, FALSE);
 
-  qspi_clk_division_set(QSPI1, QSPI_CLK_DIV_3);
+  qspi_clk_division_set(QSPI1, QSPI_CLK_DIV_12);
   
   qspi_sck_mode_set(QSPI1, QSPI_SCK_MODE_0);
 

@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <Root>
     <WorkBenchVersion>
-        <Version>V1.2.05</Version>
+        <Version>V1.2.06</Version>
     </WorkBenchVersion>
     <MCUInfo>
         <MCUSerials>AT32F435</MCUSerials>
@@ -77,8 +77,8 @@
             <ModeSub name="QSPI_State" value="TRUE"/>
         </Mode>
         <Parameters>
-            <ParametersSub name="ClkDivision" value="QSPI_CLK_DIV_3"/>
-            <ParametersSub name="ClockFrequency" value="48000000"/>
+            <ParametersSub name="ClkDivision" value="QSPI_CLK_DIV_12"/>
+            <ParametersSub name="ClockFrequency" value="12000000"/>
             <ParametersSub name="PortSwitch" value="QSPI_PORT_CMD"/>
         </Parameters>
     </QSPI1>
