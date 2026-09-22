@@ -77,8 +77,8 @@
             <ModeSub name="QSPI_State" value="TRUE"/>
         </Mode>
         <Parameters>
-            <ParametersSub name="ClkDivision" value="QSPI_CLK_DIV_12"/>
-            <ParametersSub name="ClockFrequency" value="12000000"/>
+            <ParametersSub name="ClkDivision" value="QSPI_CLK_DIV_3"/>
+            <ParametersSub name="ClockFrequency" value="48000000"/>
             <ParametersSub name="PortSwitch" value="QSPI_PORT_CMD"/>
         </Parameters>
     </QSPI1>

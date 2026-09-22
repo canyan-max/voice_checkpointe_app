@@ -56,7 +56,6 @@
 
 /* private user code ---------------------------------------------------------*/
 /* add user code begin 0 */
-
 /* add user code end 0 */
 
 /* task handler */
@@ -149,7 +148,7 @@ void freertos_task_create(void)
   /* create start_test_tasks task */
   xTaskCreate(start_or_test_f,
               "start_test_tasks",
-              512,
+              START_TEST_TASK_STACK_WORDS,
               NULL,
               0,
               &start_test_tasks_handle);

@@ -133,6 +133,8 @@ extern "C"
 #define BOARD_SPI_FONT_ROM_CS_PORT            GPIOA
 #define BOARD_SPI_FONT_ROM_CS_PIN             GPIO_PINS_15
 
+#define BOARD_QSPI_STORAGE_INSTANCE           QSPI1
+
 /* typedef ------------------------------------------------------------------*/
 
 /* variables ----------------------------------------------------------------*/

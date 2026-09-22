@@ -337,9 +337,9 @@
             <v6Rtti>0</v6Rtti>
             <VariousControls>
               <MiscControls></MiscControls>
-              <Define>AT32F435VGT7, USE_STDPERIPH_DRIVER, USE_DEBUG_LOG</Define>
+              <Define>AT32F435VGT7, USE_STDPERIPH_DRIVER, USE_DEBUG_LOG, LFS_DEFINES=lfs_config.h</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\04_Impl\mcu_at32;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\06_Component\ExternalChip\VTX316;..\..\06_Component\ExternalChip\CAT5171;..\..\06_Component\ExternalChip\GT20L16S1Y;..\..\06_Component\Button;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
+              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\04_Impl\mcu_at32;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\06_Component\ExternalChip\VTX316;..\..\06_Component\ExternalChip\CAT5171;..\..\06_Component\ExternalChip\GT20L16S1Y;..\..\06_Component\ExternalChip\HG25Q128B;..\..\06_Component\Button;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F;..\..\06_Component\Littlefs</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -682,6 +682,11 @@
               <FileType>5</FileType>
               <FilePath>..\..\00_Project_Config\board_resources.h</FilePath>
             </File>
+            <File>
+              <FileName>board_storage_layout.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\00_Project_Config\board_storage_layout.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -782,6 +787,16 @@
               <FileType>5</FileType>
               <FilePath>..\..\02_Service\hub_display_service.h</FilePath>
             </File>
+            <File>
+              <FileName>storage_filesystem_service.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\02_Service\storage_filesystem_service.c</FilePath>
+            </File>
+            <File>
+              <FileName>storage_filesystem_service.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\02_Service\storage_filesystem_service.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -857,6 +872,16 @@
               <FileType>5</FileType>
               <FilePath>..\..\03_Platform\bsp\bsp_font_rom.h</FilePath>
             </File>
+            <File>
+              <FileName>bsp_storage_flash.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_storage_flash.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_storage_flash.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_storage_flash.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -881,6 +906,11 @@
               <FileName>plat_spi.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\03_Platform\mcu_interface\plat_spi.h</FilePath>
+            </File>
+            <File>
+              <FileName>plat_qspi.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\03_Platform\mcu_interface\plat_qspi.h</FilePath>
             </File>
             <File>
               <FileName>plat_log.h</FileName>
@@ -926,6 +956,11 @@
               <FileName>at32f435_spi.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\04_Impl\mcu_at32\at32f435_spi.c</FilePath>
+            </File>
+            <File>
+              <FileName>at32f435_qspi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\04_Impl\mcu_at32\at32f435_qspi.c</FilePath>
             </File>
             <File>
               <FileName>at32f435_log.c</FileName>
@@ -997,6 +1032,16 @@
               <FileType>5</FileType>
               <FilePath>..\..\06_Component\ExternalChip\GT20L16S1Y\gt20l16s1y.h</FilePath>
             </File>
+            <File>
+              <FileName>hg25q128b.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\06_Component\ExternalChip\HG25Q128B\hg25q128b.c</FilePath>
+            </File>
+            <File>
+              <FileName>hg25q128b.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\06_Component\ExternalChip\HG25Q128B\hg25q128b.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -1041,6 +1086,31 @@
               <FileName>button.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\06_Component\Button\button.c</FilePath>
+            </File>
+            <File>
+              <FileName>lfs.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\06_Component\Littlefs\lfs.c</FilePath>
+            </File>
+            <File>
+              <FileName>lfs.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\06_Component\Littlefs\lfs.h</FilePath>
+            </File>
+            <File>
+              <FileName>lfs_util.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\06_Component\Littlefs\lfs_util.c</FilePath>
+            </File>
+            <File>
+              <FileName>lfs_util.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\06_Component\Littlefs\lfs_util.h</FilePath>
+            </File>
+            <File>
+              <FileName>lfs_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\06_Component\Littlefs\lfs_config.h</FilePath>
             </File>
           </Files>
         </Group>

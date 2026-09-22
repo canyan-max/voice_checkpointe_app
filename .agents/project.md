@@ -1,10 +1,10 @@
 # Voice Checkpoint 工程状态
 
-> 更新时间：2026-09-16  
+> 更新时间：2026-09-22
 >
-> 当前阶段：基础驱动、音频播放和音量调节通路初步完成  
+> 当前阶段：基础驱动、音频播放、字幕显示和外部存储通路初步完成
 >
-> 版本基线：`b0e4beb feat: integrate runtime audio volume control`
+> 版本基线：当前外部存储基础版本
 
 本文用于快速了解工程当前已经具备的能力、板上验证结果和后续边界。历史分析、内存估算和设计过程见 `.agents/memory.md`。
 
@@ -17,7 +17,7 @@
 | 工具链 | Keil MDK 5，Arm Compiler 6.22 |
 | 音频输出 | I2S/EDMA → CS4344 → CAT5171 → TPA3116 → 喇叭 |
 | 语音合成 | UART → VTX316 → CAT5171 → TPA3116 → 喇叭 |
-| 文件系统 | SDIO + FatFs |
+| 文件系统 | SDIO + FatFs；QSPI Flash + LittleFS |
 | 当前构建结果 | `0 Error(s), 0 Warning(s)` |
 
 工程分层保持为：
@@ -58,6 +58,26 @@
 - 当前 SDIO 测试频率可正常读取和写入音频文件。
 - 测试代码采用轮询版本；SD 卡基础读写通路可用。
 
+### QSPI Flash 与 LittleFS
+
+- 板载存储芯片按实际丝印确认为 HG25Q128B，容量16 MiB，JEDEC ID为`C2 20 18`。
+- QSPI1当前工作频率48 MHz（144 MHz / 3）。
+- 普通命令、编程和擦除采用1-1-1；数据读取采用1-1-4，Quad Enable掉电保持已验证。
+- 已验证整扇区16页编程、4 MiB重复读取校验和测试扇区擦除恢复。
+- 已建立从`plat_qspi`、HG25Q128B驱动到`bsp_storage_flash`的完整阻塞式访问链路。
+- LittleFS保持第三方源码不修改，通过独立`lfs_config.h`关闭动态内存、调试输出和断言。
+- `storage_filesystem_service`持有LittleFS实例、静态缓存、挂载状态及单个打开文件，不依赖RTOS；BSP只负责裸Flash读、写和擦除。
+- 当前外部Flash分区固定为：
+
+```text
+0x000000～0xDFFFFF：LittleFS，14 MiB，3584个4 KiB Sector
+0xE00000～0xFFFFFF：OTA预留，2 MiB，暂不参与管理
+```
+
+- 已板测首次格式化、8 KiB文件写入、卸载重挂载、读取校验和掉电持久化；第二次启动能够直接挂载且`formatted=0`。
+- 验证完成后已删除`start_or_test_f`中的QSPI/LittleFS测试代码，系统启动阶段当前不访问外部Flash。
+- 参数文件格式、目录、原子替换和OTA业务尚未设计，等待实际需求明确后补充。
+
 ### LED
 
 - 已建立板级 LED BSP 和指示 App。
@@ -66,6 +86,14 @@
 - `LED_OUT_R/B` 为高电平点亮；VTX316语音指示开始时红灯先亮，之后红/蓝每5秒交替，HUB字幕完整滚完时与屏幕同时熄灭。停止、异常和紧急打断会立即熄灭。
 - `voice_presentation_app` 负责统一编排VTX字幕与红蓝灯；`led_indicator_app` 只管理LED，`hub_display_app` 只管理显示，二者不再直接依赖。
 - `LED_POWER_CS` 属于其他器件电源控制，不纳入普通指示灯逻辑。
+
+### HUB显示与GT20L16S1Y字库
+
+- 已复现厂家HUB12单色屏1/4扫描显示与纵向滚动效果。
+- HUB扫描由RTOS软件定时器周期驱动，字幕滚动与红蓝LED生命周期由`voice_presentation_app`统一编排。
+- 已接入GT20L16S1Y字库芯片，SPI读出的多个GB2312 16×16字模均通过重复校验。
+- VTX316测试文本可流式读取字模并滚动显示，不再要求一次性缓存全部字幕。
+- 当前仅完成厂家屏功能和语音字幕联动；HUB08/HUB75等多屏类型尚未实现。
 
 ## 3. MP3 播放通路
 
@@ -186,7 +214,9 @@ Audio Player Service
 - EEPROM 驱动及其与 CAT5171 共用 I2C2 的并发策略。
 - ADC 紧急喊话检测和正式硬件触发。
 - 4G、RS485 等协议触发接入。
-- QSPI、USB 音频数据源。
+- QSPI LittleFS和USB音频数据源适配。
+- OTA镜像下载、校验和升级流程；当前仅预留2 MiB物理区域。
+- LittleFS参数文件格式、原子更新及正式挂载生命周期。
 - 正式的播放优先级、待播放队列和抢占策略。
 - VTX316 播放完成超时保护。
 - 音量默认值持久化、最终安全 D 区间和听感曲线。

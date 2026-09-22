@@ -79,6 +79,9 @@ extern "C"
 #define BOARD_SPI_FONT_ROM          ((plat_spi_id_t)0U)
 #define BOARD_SPI_RESOURCE_NUM      ((plat_spi_id_t)1U)
 
+#define BOARD_QSPI_STORAGE          ((plat_qspi_id_t)0U)
+#define BOARD_QSPI_RESOURCE_NUM     ((plat_qspi_id_t)1U)
+
 /* typedef ------------------------------------------------------------------*/
 
 /* variables ----------------------------------------------------------------*/
