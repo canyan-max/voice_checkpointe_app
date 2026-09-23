@@ -882,6 +882,16 @@
               <FileType>5</FileType>
               <FilePath>..\..\03_Platform\bsp\bsp_storage_flash.h</FilePath>
             </File>
+            <File>
+              <FileName>bsp_rs485.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_rs485.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_rs485.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_rs485.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
