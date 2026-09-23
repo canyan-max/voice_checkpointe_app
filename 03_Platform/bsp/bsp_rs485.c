@@ -5,9 +5,6 @@
 #include "plat_gpio.h"
 #include "plat_uart.h"
 
-#define BSP_RS485_RX_FIFO_SIZE 512U
-
-uint8_t rs485_rx_fifo[BSP_RS485_RX_FIFO_SIZE];
 static volatile uint32_t rs485_idle_sequence;
 static volatile uint32_t rs485_error_sequence;
 static uint32_t rs485_idle_handled;
@@ -54,9 +51,7 @@ platform_err_t bsp_rs485_init(void)
     {
         return ret;
     }
-    ret = plat_uart_receive_start(BOARD_UART_RS485,
-                                  rs485_rx_fifo,
-                                  (uint16_t)sizeof(rs485_rx_fifo));
+    ret = plat_uart_receive_start(BOARD_UART_RS485);
     if(PLATFORM_ERR_OK != ret)
     {
         (void)plat_uart_set_rx_callback(BOARD_UART_RS485, NULL);
@@ -119,7 +114,14 @@ platform_err_t bsp_rs485_poll(uint8_t *p_data,
     {
         return PLATFORM_ERR_OK;
     }
-    return plat_uart_read(BOARD_UART_RS485, p_data, available, p_size);
+    ret = plat_uart_read(BOARD_UART_RS485, p_data, available, p_size);
+    if(rs485_error_handled != rs485_error_sequence)
+    {
+        rs485_error_handled = rs485_error_sequence;
+        *p_size = 0U;
+        return PLATFORM_ERR_HW;
+    }
+    return ret;
 }
 
 platform_err_t bsp_rs485_send(const uint8_t *p_data,

@@ -55,7 +55,7 @@ void wk_usart1_init(void)
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_pins = UART1485_TX_PA9_PIN;
-  gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
+  gpio_init_struct.gpio_pull = GPIO_PULL_UP;
   gpio_init(UART1485_TX_PA9_GPIO_PORT, &gpio_init_struct);
 
   /* configure the RX pin */
@@ -64,7 +64,7 @@ void wk_usart1_init(void)
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_pins = UART1485_RX_PA10_PIN;
-  gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
+  gpio_init_struct.gpio_pull = GPIO_PULL_UP;
   gpio_init(UART1485_RX_PA10_GPIO_PORT, &gpio_init_struct);
 
   /* configure param */
@@ -115,7 +115,7 @@ void wk_usart2_init(void)
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_pins = USART2_TX_PA8_PIN;
-  gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
+  gpio_init_struct.gpio_pull = GPIO_PULL_UP;
   gpio_init(USART2_TX_PA8_GPIO_PORT, &gpio_init_struct);
 
   /* configure the RX pin */
@@ -175,7 +175,7 @@ void wk_usart3_init(void)
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_pins = TTS_TX_PB10_PIN;
-  gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
+  gpio_init_struct.gpio_pull = GPIO_PULL_UP;
   gpio_init(TTS_TX_PB10_GPIO_PORT, &gpio_init_struct);
 
   /* configure the RX pin */
@@ -235,7 +235,7 @@ void wk_uart5_init(void)
   gpio_init_struct.gpio_out_type = GPIO_OUTPUT_PUSH_PULL;
   gpio_init_struct.gpio_mode = GPIO_MODE_MUX;
   gpio_init_struct.gpio_pins = UART5_LOG_TX_PE10_PIN;
-  gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
+  gpio_init_struct.gpio_pull = GPIO_PULL_UP;
   gpio_init(UART5_LOG_TX_PE10_GPIO_PORT, &gpio_init_struct);
 
   /* configure the RX pin */

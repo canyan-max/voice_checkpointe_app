@@ -148,7 +148,7 @@ void freertos_task_create(void)
   /* create start_test_tasks task */
   xTaskCreate(start_or_test_f,
               "start_test_tasks",
-              START_TEST_TASK_STACK_WORDS,
+              512,
               NULL,
               0,
               &start_test_tasks_handle);
@@ -279,7 +279,7 @@ void start_or_test_f(void *pvParameters)
              (int32_t)presentation_ret);
   app_ret = audio_playback_app_init();
   plat_log_i("Audio app init=%d, SW2=MP3, SW3=volume-5, SW4=volume+5, SW5=VTX316",
-             (int32_t)app_ret);
+              (int32_t)app_ret);
 
   now_ms = plat_tick_get_ms();
   for(button_index = 0U;

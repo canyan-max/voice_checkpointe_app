@@ -18,13 +18,16 @@
 #include "wk_usart.h"
 
 /* define   -----------------------------------------------------------------*/
-#define AT32F435_UART_RX_DMA_SIZE    512U
+#define AT32F435_UART_REMOTE_4G_RX_SIZE    512U
+#define AT32F435_UART_RS485_RX_SIZE       1024U
+#define AT32F435_UART_VTX316_RX_SIZE        64U
 
 /* typedef ------------------------------------------------------------------*/
 typedef struct AT32F435_UART_RX_T
 {
     kfifo_t              fifo;
     plat_uart_rx_cb_t    callback;
+    volatile uint32_t    overflow_generation;
     uint16_t             dma_last_pos;
     uint8_t              is_started;
 } at32f435_uart_rx_t;
@@ -37,9 +40,18 @@ typedef struct AT32F435_UART_CFG_T
     uint32_t          rx_dma_half_flag;
     uint32_t          rx_dma_full_flag;
     uint32_t          rx_dma_error_flag;
+    uint8_t          *p_rx_buffer;
+    uint16_t          rx_buffer_size;
 } at32f435_uart_cfg_t;
 
-/* variables ----------------------------------------------------------------*/
+/* One aligned buffer per port; DMA writes it and kfifo only tracks indices. */
+static uint32_t uart_remote_4g_rx_storage[
+    AT32F435_UART_REMOTE_4G_RX_SIZE / sizeof(uint32_t)];
+static uint32_t uart_rs485_rx_storage[
+    AT32F435_UART_RS485_RX_SIZE / sizeof(uint32_t)];
+static uint32_t uart_vtx316_rx_storage[
+    AT32F435_UART_VTX316_RX_SIZE / sizeof(uint32_t)];
+
 static const at32f435_uart_cfg_t uart_cfg[BOARD_UART_RESOURCE_NUM] =
 {
     [BOARD_UART_REMOTE_4G] =
@@ -49,7 +61,9 @@ static const at32f435_uart_cfg_t uart_cfg[BOARD_UART_RESOURCE_NUM] =
         BOARD_UART_REMOTE_4G_RX_DMA_GLOBAL,
         BOARD_UART_REMOTE_4G_RX_DMA_HALF,
         BOARD_UART_REMOTE_4G_RX_DMA_FULL,
-        BOARD_UART_REMOTE_4G_RX_DMA_ERROR
+        BOARD_UART_REMOTE_4G_RX_DMA_ERROR,
+        (uint8_t *)uart_remote_4g_rx_storage,
+        AT32F435_UART_REMOTE_4G_RX_SIZE
     },
     [BOARD_UART_RS485] =
     {
@@ -58,7 +72,9 @@ static const at32f435_uart_cfg_t uart_cfg[BOARD_UART_RESOURCE_NUM] =
         BOARD_UART_RS485_RX_DMA_GLOBAL,
         BOARD_UART_RS485_RX_DMA_HALF,
         BOARD_UART_RS485_RX_DMA_FULL,
-        BOARD_UART_RS485_RX_DMA_ERROR
+        BOARD_UART_RS485_RX_DMA_ERROR,
+        (uint8_t *)uart_rs485_rx_storage,
+        AT32F435_UART_RS485_RX_SIZE
     },
     [BOARD_UART_VTX316] =
     {
@@ -67,18 +83,26 @@ static const at32f435_uart_cfg_t uart_cfg[BOARD_UART_RESOURCE_NUM] =
         BOARD_UART_VTX316_RX_DMA_GLOBAL,
         BOARD_UART_VTX316_RX_DMA_HALF,
         BOARD_UART_VTX316_RX_DMA_FULL,
-        BOARD_UART_VTX316_RX_DMA_ERROR
+        BOARD_UART_VTX316_RX_DMA_ERROR,
+        (uint8_t *)uart_vtx316_rx_storage,
+        AT32F435_UART_VTX316_RX_SIZE
     }
 };
 
-static uint32_t uart_rx_dma_storage
-    [BOARD_UART_RESOURCE_NUM]
-    [AT32F435_UART_RX_DMA_SIZE / sizeof(uint32_t)];
 static at32f435_uart_rx_t uart_rx_table[BOARD_UART_RESOURCE_NUM];
 
 _Static_assert((sizeof(uart_cfg) / sizeof(uart_cfg[0])) ==
                    BOARD_UART_RESOURCE_NUM,
                "UART resource table size mismatch");
+_Static_assert((AT32F435_UART_REMOTE_4G_RX_SIZE &
+                (AT32F435_UART_REMOTE_4G_RX_SIZE - 1U)) == 0U,
+               "Remote 4G UART RX size must be a power of two");
+_Static_assert((AT32F435_UART_RS485_RX_SIZE &
+                (AT32F435_UART_RS485_RX_SIZE - 1U)) == 0U,
+               "RS485 UART RX size must be a power of two");
+_Static_assert((AT32F435_UART_VTX316_RX_SIZE &
+                (AT32F435_UART_VTX316_RX_SIZE - 1U)) == 0U,
+               "VTX316 UART RX size must be a power of two");
 
 /* private  functions  ------------------------------------------------------*/
 /**
@@ -109,7 +133,7 @@ static platform_err_t at32f435_uart_wait_flag(usart_type *p_uart,
   * @brief            : Notify the registered UART callback from an ISR.
   * @param[in]        : id Logical UART ID.
   * @param[in]        : event Receive event flags.
-  * @param[in]        : size Number of bytes added to the FIFO.
+  * @param[in]        : size Number of newly received bytes.
   */
 static void at32f435_uart_rx_notify(plat_uart_id_t       id,
                                     plat_uart_rx_event_t event,
@@ -122,68 +146,70 @@ static void at32f435_uart_rx_notify(plat_uart_id_t       id,
 }
 
 /**
-  * @brief            : Copy newly received circular DMA data into the FIFO.
+  * @brief            : Publish newly received bytes already written by DMA.
   * @retval           : Receive event flags produced by the synchronization.
   * @param[in]        : id Logical UART ID.
-  * @param[out]       : p_write_size Number of bytes added to the FIFO.
+  * @param[out]       : p_write_size Number of new, valid bytes.
   */
 static plat_uart_rx_event_t
 at32f435_uart_rx_sync(plat_uart_id_t id, uint16_t *p_write_size)
 {
     const at32f435_uart_cfg_t *p_cfg = &uart_cfg[id];
     at32f435_uart_rx_t *p_rx = &uart_rx_table[id];
-    uint8_t *p_dma_buf = (uint8_t *)uart_rx_dma_storage[id];
     uint16_t dma_pos;
-    uint16_t first_size;
-    uint16_t second_size;
-    uint32_t write_size;
+    uint32_t received;
+    flag_status full_before;
+    flag_status full_after;
+    flag_status dma_error;
     plat_uart_rx_event_t event = PLAT_UART_RX_EVENT_NONE;
 
-    dma_pos = (uint16_t)(AT32F435_UART_RX_DMA_SIZE -
+    /* The full-transfer flag distinguishes one complete lap from no data. */
+    full_before = dma_interrupt_flag_get(p_cfg->rx_dma_full_flag);
+    dma_pos = (uint16_t)(p_cfg->rx_buffer_size -
                          dma_data_number_get(p_cfg->p_rx_dma));
-    if(dma_pos >= AT32F435_UART_RX_DMA_SIZE)
+    full_after = dma_interrupt_flag_get(p_cfg->rx_dma_full_flag);
+    if(full_before != full_after)
+    {
+        dma_pos = (uint16_t)(p_cfg->rx_buffer_size -
+                             dma_data_number_get(p_cfg->p_rx_dma));
+    }
+    dma_error = dma_interrupt_flag_get(p_cfg->rx_dma_error_flag);
+    dma_flag_clear(p_cfg->rx_dma_global_flag);
+    if(dma_pos >= p_cfg->rx_buffer_size)
     {
         dma_pos = 0U;
     }
 
-    if(dma_pos >= p_rx->dma_last_pos)
+    received = (uint32_t)(dma_pos + p_cfg->rx_buffer_size -
+                           p_rx->dma_last_pos) % p_cfg->rx_buffer_size;
+    if((SET == full_after) && (dma_pos >= p_rx->dma_last_pos))
     {
-        first_size = (uint16_t)(dma_pos - p_rx->dma_last_pos);
-        second_size = 0U;
-    }
-    else
-    {
-        first_size = (uint16_t)(AT32F435_UART_RX_DMA_SIZE -
-                                p_rx->dma_last_pos);
-        second_size = dma_pos;
-    }
-
-    write_size = kfifo_put(&p_rx->fifo,
-                           &p_dma_buf[p_rx->dma_last_pos],
-                           first_size);
-    if(write_size < first_size)
-    {
-        event = (plat_uart_rx_event_t)(event |
-                                       PLAT_UART_RX_EVENT_OVERFLOW);
-    }
-    *p_write_size = (uint16_t)write_size;
-
-    if(second_size > 0U)
-    {
-        write_size = kfifo_put(&p_rx->fifo, p_dma_buf, second_size);
-        if(write_size < second_size)
-        {
-            event = (plat_uart_rx_event_t)(event |
-                                           PLAT_UART_RX_EVENT_OVERFLOW);
-        }
-        *p_write_size = (uint16_t)(*p_write_size + (uint16_t)write_size);
-    }
-
-    if(*p_write_size > 0U)
-    {
-        event = (plat_uart_rx_event_t)(event | PLAT_UART_RX_EVENT_DATA);
+        received += p_cfg->rx_buffer_size;
     }
     p_rx->dma_last_pos = dma_pos;
+    *p_write_size = 0U;
+    if((received > p_cfg->rx_buffer_size) ||
+       (received > kfifo_avail(&p_rx->fifo)))
+    {
+        /* DMA has overwritten unread data: drop the entire damaged burst. */
+        if(received > 0U)
+        {
+            (void)kfifo_advance_in(&p_rx->fifo, received);
+            p_rx->fifo.out = p_rx->fifo.in;
+            p_rx->overflow_generation++;
+        }
+        event = PLAT_UART_RX_EVENT_OVERFLOW;
+    }
+    else if(received > 0U)
+    {
+        (void)kfifo_advance_in(&p_rx->fifo, received);
+        *p_write_size = (uint16_t)received;
+        event = PLAT_UART_RX_EVENT_DATA;
+    }
+    if(SET == dma_error)
+    {
+        event = (plat_uart_rx_event_t)(event | PLAT_UART_RX_EVENT_ERROR);
+    }
     return event;
 }
 
@@ -239,23 +265,17 @@ platform_err_t plat_uart_send(plat_uart_id_t id,
 }
 
 /**
-  * @brief            : Start continuous DMA reception into a software FIFO.
+  * @brief            : Start circular DMA reception into the driver's FIFO.
   * @retval           : PLATFORM_ERR_OK, PLATFORM_ERR_PARAM or
   *                     PLATFORM_ERR_BUSY.
   * @param[in]        : id Logical UART ID.
-  * @param[in]        : p_buf Caller-owned FIFO storage buffer.
-  * @param[in]        : buf_size FIFO size in bytes; must be a power of two.
   */
-platform_err_t plat_uart_receive_start(plat_uart_id_t id,
-                                       uint8_t       *p_buf,
-                                       uint16_t       buf_size)
+platform_err_t plat_uart_receive_start(plat_uart_id_t id)
 {
     const at32f435_uart_cfg_t *p_cfg;
     at32f435_uart_rx_t *p_rx;
 
-    if(((uint32_t)id >= (uint32_t)BOARD_UART_RESOURCE_NUM) ||
-       (NULL == p_buf) ||
-       (0U == buf_size))
+    if((uint32_t)id >= (uint32_t)BOARD_UART_RESOURCE_NUM)
     {
         return PLATFORM_ERR_PARAM;
     }
@@ -266,7 +286,9 @@ platform_err_t plat_uart_receive_start(plat_uart_id_t id,
     {
         return PLATFORM_ERR_BUSY;
     }
-    if(0U != kfifo_init(&p_rx->fifo, p_buf, buf_size))
+    if(0U != kfifo_init(&p_rx->fifo,
+                        p_cfg->p_rx_buffer,
+                        p_cfg->rx_buffer_size))
     {
         return PLATFORM_ERR_PARAM;
     }
@@ -275,8 +297,8 @@ platform_err_t plat_uart_receive_start(plat_uart_id_t id,
     dma_flag_clear(p_cfg->rx_dma_global_flag);
     wk_dma_channel_config(p_cfg->p_rx_dma,
                           (uint32_t)&p_cfg->p_uart->dt,
-                          (uint32_t)uart_rx_dma_storage[id],
-                          AT32F435_UART_RX_DMA_SIZE);
+                          (uint32_t)p_cfg->p_rx_buffer,
+                          p_cfg->rx_buffer_size);
     p_rx->dma_last_pos = 0U;
     p_rx->is_started = 1U;
     dma_channel_enable(p_cfg->p_rx_dma, TRUE);
@@ -293,6 +315,7 @@ platform_err_t plat_uart_read(plat_uart_id_t id,
                               uint16_t      *p_read_size)
 {
     uint32_t read_size;
+    uint32_t overflow_before;
 
     if(((uint32_t)id >= (uint32_t)BOARD_UART_RESOURCE_NUM) ||
        (NULL == p_data) ||
@@ -303,7 +326,15 @@ platform_err_t plat_uart_read(plat_uart_id_t id,
         return PLATFORM_ERR_PARAM;
     }
 
+    overflow_before = uart_rx_table[id].overflow_generation;
     read_size = kfifo_get(&uart_rx_table[id].fifo, p_data, size);
+    if(overflow_before != uart_rx_table[id].overflow_generation)
+    {
+        /* An ISR discarded the ring during the copy; reject its contents. */
+        uart_rx_table[id].fifo.out = uart_rx_table[id].fifo.in;
+        *p_read_size = 0U;
+        return PLATFORM_ERR_HW;
+    }
     *p_read_size = (uint16_t)read_size;
     return PLATFORM_ERR_OK;
 }

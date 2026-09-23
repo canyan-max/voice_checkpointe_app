@@ -16,13 +16,11 @@
 #include "vtx316.h"
 
 /* define -------------------------------------------------------------------*/
-#define BSP_VOICE_SYNTHESIS_RX_FIFO_SIZE  64U
 #define BSP_VOICE_SYNTHESIS_RX_READ_SIZE  16U
 
 /* variables ----------------------------------------------------------------*/
 static vtx316_device_t vtx316_device;
 static uint8_t vtx316_is_initialized;
-static uint8_t vtx316_rx_fifo[BSP_VOICE_SYNTHESIS_RX_FIFO_SIZE];
 
 /* private functions --------------------------------------------------------*/
 static vtx316_ret_t bsp_voice_synthesis_uart_transmit(
@@ -214,9 +212,7 @@ platform_err_t bsp_voice_synthesis_init(void)
         return PLATFORM_ERR_OK;
     }
 
-    plat_ret = plat_uart_receive_start(BOARD_UART_VTX316,
-                                       vtx316_rx_fifo,
-                                       (uint16_t)sizeof(vtx316_rx_fifo));
+    plat_ret = plat_uart_receive_start(BOARD_UART_VTX316);
     if(PLATFORM_ERR_OK != plat_ret)
     {
         return plat_ret;

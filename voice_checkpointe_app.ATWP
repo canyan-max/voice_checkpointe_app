@@ -372,6 +372,7 @@
             <Parameters name="Label" value="DEBUG_SCOPE_PE9"/>
         </Signal>
         <Signal SignalName="UART5_TX" PinName="PE10">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="UART5_LOG_TX_PE10"/>
         </Signal>
         <Signal SignalName="UART5_RX" PinName="PE11">
@@ -395,6 +396,7 @@
             <Parameters name="Label" value="LED4_RUN_PE15"/>
         </Signal>
         <Signal SignalName="USART3_TX" PinName="PB10">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="TTS_TX_PB10"/>
         </Signal>
         <Signal SignalName="USART3_RX" PinName="PB11">
@@ -455,12 +457,15 @@
             <Parameters name="Label" value="LED_POWER_CS_PC9"/>
         </Signal>
         <Signal SignalName="USART2_TX" PinName="PA8">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="USART2_TX_PA8"/>
         </Signal>
         <Signal SignalName="USART1_TX" PinName="PA9">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="UART1485_TX_PA9"/>
         </Signal>
         <Signal SignalName="USART1_RX" PinName="PA10">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="UART1485_RX_PA10"/>
         </Signal>
         <Signal SignalName="GPIO_Output" PinName="PA11">

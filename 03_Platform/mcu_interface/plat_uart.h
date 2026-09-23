@@ -61,22 +61,19 @@ platform_err_t plat_uart_send(plat_uart_id_t id,
                               uint32_t       timeout_ms);
 
 /**
-  * @brief            : Start continuous DMA reception into a software FIFO.
+  * @brief            : Start continuous reception into driver-owned storage.
   * @retval           : PLATFORM_ERR_OK, PLATFORM_ERR_PARAM or
   *                     PLATFORM_ERR_BUSY.
   * @param[in]        : id Logical UART ID.
-  * @param[in]        : p_buf Caller-owned FIFO storage buffer.
-  * @param[in]        : buf_size FIFO size in bytes; must be a power of two.
-  * @note             : The buffer remains owned by the driver after success.
+  * @note             : The MCU implementation owns the circular DMA buffer.
   *                     Call once from task context after UART initialization.
   */
-platform_err_t plat_uart_receive_start(plat_uart_id_t id,
-                                       uint8_t       *p_buf,
-                                       uint16_t       buf_size);
+platform_err_t plat_uart_receive_start(plat_uart_id_t id);
 
 /**
   * @brief            : Read available bytes from the UART receive FIFO.
-  * @retval           : PLATFORM_ERR_OK or PLATFORM_ERR_PARAM.
+  * @retval           : PLATFORM_ERR_OK, PLATFORM_ERR_PARAM or
+  *                     PLATFORM_ERR_HW if DMA overflowed during the read.
   * @param[in]        : id Logical UART ID.
   * @param[out]       : p_data Destination buffer.
   * @param[in]        : size Maximum number of bytes to read.
