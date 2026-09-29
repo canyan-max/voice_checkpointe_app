@@ -469,6 +469,7 @@
             <Parameters name="Label" value="UART1485_RX_PA10"/>
         </Signal>
         <Signal SignalName="GPIO_Output" PinName="PA11">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
             <Parameters name="Label" value="E27_POWEREN_PA11"/>
         </Signal>
         <Signal SignalName="GPIO_Output" PinName="PA12">

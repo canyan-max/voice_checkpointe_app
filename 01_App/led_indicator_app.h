@@ -15,6 +15,7 @@ extern "C"
 #endif
 
 /* Includes -----------------------------------------------------------------*/
+#include <stdint.h>
 #include "plat_error.h"
 
 /* functions ----------------------------------------------------------------*/
@@ -23,6 +24,7 @@ platform_err_t led_indicator_app_init(void);
 platform_err_t led_indicator_app_voice_start(void);
 
 platform_err_t led_indicator_app_voice_stop(void);
+platform_err_t led_indicator_app_remote_connected_set(uint8_t connected);
 
 #ifdef __cplusplus
 }

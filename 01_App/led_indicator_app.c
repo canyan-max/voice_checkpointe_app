@@ -176,4 +176,14 @@ platform_err_t led_indicator_app_voice_stop(void)
     return ret;
 }
 
+platform_err_t led_indicator_app_remote_connected_set(uint8_t connected)
+{
+    if(0U == led_indicator_is_started)
+    {
+        return PLATFORM_ERR_HW;
+    }
+    return bsp_led_set(BSP_LED_REMOTE,
+                       (0U != connected) ? BSP_LED_ON : BSP_LED_OFF);
+}
+
 /* end of file --------------------------------------------------------------*/

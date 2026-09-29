@@ -19,6 +19,7 @@
 #include "audio_volume_service.h"
 #include "button.h"
 #include "voice_presentation_app.h"
+#include "remote_modem_config_app.h"
 /* add user code end private includes */
 
 /* private typedef -----------------------------------------------------------*/
@@ -260,6 +261,8 @@ void start_or_test_f(void *pvParameters)
   /* add user code begin start_or_test_f 2 */
   log_ret = plat_log_init();
   plat_log_i("Audio MP3 application start, log_init=%d", (int32_t)log_ret);
+  plat_log_i("4G passive boot monitor start ret=%d",
+             (int32_t)remote_modem_config_app_monitor_start());
   volume_ret = audio_volume_service_init(&volume_service,
                                          START_TEST_I2C_TIMEOUT_MS);
   if(PLATFORM_ERR_OK == volume_ret)
@@ -278,7 +281,7 @@ void start_or_test_f(void *pvParameters)
   plat_log_i("Voice presentation app init=%d, idle display/LEDs=off",
              (int32_t)presentation_ret);
   app_ret = audio_playback_app_init();
-  plat_log_i("Audio app init=%d, SW2=MP3, SW3=volume-5, SW4=volume+5, SW5=VTX316",
+  plat_log_i("Audio app init=%d, SW2=MP3, SW3=volume-5, SW4=volume+5/hold=4G config, SW5 hold=4G diagnostic",
               (int32_t)app_ret);
 
   now_ms = plat_tick_get_ms();
@@ -314,6 +317,8 @@ void start_or_test_f(void *pvParameters)
   /* add user code begin start_or_test_f 1 */
 
     now_ms = plat_tick_get_ms();
+    remote_modem_config_app_poll(now_ms);
+    remote_modem_config_app_monitor_poll(now_ms);
     for(button_index = 0U;
         button_index < START_TEST_BUTTON_COUNT;
         button_index++)
@@ -352,6 +357,26 @@ void start_or_test_f(void *pvParameters)
         continue;
       }
 
+      if((2U == button_index) &&
+         (BUTTON_EVENT_LONG_PRESS == button_event))
+      {
+        platform_err_t modem_ret;
+
+        modem_ret = remote_modem_config_app_request(now_ms);
+        plat_log_i("SW4 long press 4G config request ret=%d",
+                   (int32_t)modem_ret);
+        continue;
+      }
+      if((3U == button_index) &&
+         (BUTTON_EVENT_LONG_PRESS == button_event))
+      {
+        platform_err_t modem_ret;
+
+        modem_ret = remote_modem_config_app_diagnostic_request(now_ms);
+        plat_log_i("SW5 long press 4G diagnostic request ret=%d",
+                   (int32_t)modem_ret);
+        continue;
+      }
       if(BUTTON_EVENT_PRESS != button_event)
       {
         continue;
@@ -368,14 +393,14 @@ void start_or_test_f(void *pvParameters)
       }
       else if(3U == button_index)
       {
-        platform_err_t vtx_ret;
+//        platform_err_t vtx_ret;
 
-        vtx_ret = audio_playback_app_voice_speak(
-            BSP_VOICE_SYNTHESIS_ENCODING_GBK,
-            voice_synthesis_test_text,
-            (uint16_t)sizeof(voice_synthesis_test_text));
-        plat_log_i("SW5 pressed, VTX316 request enqueue ret=%d",
-                   (int32_t)vtx_ret);
+//        vtx_ret = audio_playback_app_voice_speak(
+//            BSP_VOICE_SYNTHESIS_ENCODING_GBK,
+//            voice_synthesis_test_text,
+//            (uint16_t)sizeof(voice_synthesis_test_text));
+//        plat_log_i("SW5 pressed, VTX316 request enqueue ret=%d",
+//                   (int32_t)vtx_ret);
       }
       else
       {

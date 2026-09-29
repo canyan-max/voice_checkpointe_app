@@ -732,6 +732,16 @@
               <FileType>5</FileType>
               <FilePath>..\..\01_App\voice_presentation_app.h</FilePath>
             </File>
+            <File>
+              <FileName>remote_modem_config_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\01_App\remote_modem_config_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>remote_modem_config_app.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\01_App\remote_modem_config_app.h</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -796,6 +806,16 @@
               <FileName>storage_filesystem_service.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\02_Service\storage_filesystem_service.h</FilePath>
+            </File>
+            <File>
+              <FileName>remote_modem_config_service.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\02_Service\remote_modem_config_service.c</FilePath>
+            </File>
+            <File>
+              <FileName>remote_modem_config_service.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\02_Service\remote_modem_config_service.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -891,6 +911,16 @@
               <FileName>bsp_rs485.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\03_Platform\bsp\bsp_rs485.h</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_remote_modem.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_remote_modem.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_remote_modem.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_remote_modem.h</FilePath>
             </File>
           </Files>
         </Group>
