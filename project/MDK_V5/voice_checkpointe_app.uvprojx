@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>AT32F435VGT7, USE_STDPERIPH_DRIVER, USE_DEBUG_LOG, LFS_DEFINES=lfs_config.h</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\04_Impl\mcu_at32;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\06_Component\ExternalChip\VTX316;..\..\06_Component\ExternalChip\CAT5171;..\..\06_Component\ExternalChip\GT20L16S1Y;..\..\06_Component\ExternalChip\HG25Q128B;..\..\06_Component\Button;..\..\06_Component\Littlefs;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
+              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\04_Impl\mcu_at32;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\06_Component\ExternalChip\VTX316;..\..\06_Component\ExternalChip\CAT5171;..\..\06_Component\ExternalChip\GT20L16S1Y;..\..\06_Component\ExternalChip\HG25Q128B;..\..\06_Component\ExternalChip\E27_D;..\..\06_Component\Button;..\..\06_Component\Littlefs;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -733,14 +733,14 @@
               <FilePath>..\..\01_App\voice_presentation_app.h</FilePath>
             </File>
             <File>
-              <FileName>remote_modem_config_app.c</FileName>
+              <FileName>remote_modem_app.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\01_App\remote_modem_config_app.c</FilePath>
+              <FilePath>..\..\01_App\remote_modem_app.c</FilePath>
             </File>
             <File>
-              <FileName>remote_modem_config_app.h</FileName>
+              <FileName>remote_modem_app.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\01_App\remote_modem_config_app.h</FilePath>
+              <FilePath>..\..\01_App\remote_modem_app.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -808,14 +808,14 @@
               <FilePath>..\..\02_Service\storage_filesystem_service.h</FilePath>
             </File>
             <File>
-              <FileName>remote_modem_config_service.c</FileName>
+              <FileName>remote_modem_service.c</FileName>
               <FileType>1</FileType>
-              <FilePath>..\..\02_Service\remote_modem_config_service.c</FilePath>
+              <FilePath>..\..\02_Service\remote_modem_service.c</FilePath>
             </File>
             <File>
-              <FileName>remote_modem_config_service.h</FileName>
+              <FileName>remote_modem_service.h</FileName>
               <FileType>5</FileType>
-              <FilePath>..\..\02_Service\remote_modem_config_service.h</FilePath>
+              <FilePath>..\..\02_Service\remote_modem_service.h</FilePath>
             </File>
           </Files>
         </Group>
@@ -1022,6 +1022,16 @@
         <Group>
           <GroupName>06_Component/External_Chip</GroupName>
           <Files>
+            <File>
+              <FileName>e27_d.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\06_Component\ExternalChip\E27_D\e27_d.c</FilePath>
+            </File>
+            <File>
+              <FileName>e27_d.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\06_Component\ExternalChip\E27_D\e27_d.h</FilePath>
+            </File>
             <File>
               <FileName>cs4344.c</FileName>
               <FileType>1</FileType>

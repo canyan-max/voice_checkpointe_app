@@ -19,7 +19,7 @@
 #include "audio_volume_service.h"
 #include "button.h"
 #include "voice_presentation_app.h"
-#include "remote_modem_config_app.h"
+#include "remote_modem_app.h"
 /* add user code end private includes */
 
 /* private typedef -----------------------------------------------------------*/
@@ -246,6 +246,8 @@ void start_or_test_f(void *pvParameters)
     0xBBU, 0xF0U, 0xD2U, 0xE2U, 0xCAU, 0xB6U, 0xC0U, 0xCEU,
     0xBCU, 0xC7U, 0xD0U, 0xC4U, 0xBCU, 0xE4U, 0xA1U, 0xA3U
   };
+  /* Temporary input: future RS485 supplies this ID through the same App API. */
+  static const uint8_t remote_modem_test_id[] = "kvt9dxr84qrryr1z";
   static const uint8_t volume_decrease_prompt[] =
   {
     0xD2U, 0xF4U, 0xC1U, 0xBFU, 0xBCU, 0xF5U, 0xD0U, 0xA1U
@@ -261,8 +263,6 @@ void start_or_test_f(void *pvParameters)
   /* add user code begin start_or_test_f 2 */
   log_ret = plat_log_init();
   plat_log_i("Audio MP3 application start, log_init=%d", (int32_t)log_ret);
-  plat_log_i("4G passive boot monitor start ret=%d",
-             (int32_t)remote_modem_config_app_monitor_start());
   volume_ret = audio_volume_service_init(&volume_service,
                                          START_TEST_I2C_TIMEOUT_MS);
   if(PLATFORM_ERR_OK == volume_ret)
@@ -281,7 +281,12 @@ void start_or_test_f(void *pvParameters)
   plat_log_i("Voice presentation app init=%d, idle display/LEDs=off",
              (int32_t)presentation_ret);
   app_ret = audio_playback_app_init();
-  plat_log_i("Audio app init=%d, SW2=MP3, SW3=volume-5, SW4=volume+5/hold=4G config, SW5 hold=4G diagnostic",
+  {
+    const remote_modem_app_io_t modem_io = {NULL, NULL, 1U};
+    plat_log_i("4G application init=%d, test: newline echo enabled",
+               (int32_t)remote_modem_app_init(&modem_io));
+  }
+  plat_log_i("Audio app init=%d, SW2=MP3, SW3=volume-5, SW4=volume+5/hold=4G config, SW5=voice synthesis",
               (int32_t)app_ret);
 
   now_ms = plat_tick_get_ms();
@@ -317,8 +322,6 @@ void start_or_test_f(void *pvParameters)
   /* add user code begin start_or_test_f 1 */
 
     now_ms = plat_tick_get_ms();
-    remote_modem_config_app_poll(now_ms);
-    remote_modem_config_app_monitor_poll(now_ms);
     for(button_index = 0U;
         button_index < START_TEST_BUTTON_COUNT;
         button_index++)
@@ -362,19 +365,11 @@ void start_or_test_f(void *pvParameters)
       {
         platform_err_t modem_ret;
 
-        modem_ret = remote_modem_config_app_request(now_ms);
-        plat_log_i("SW4 long press 4G config request ret=%d",
-                   (int32_t)modem_ret);
-        continue;
-      }
-      if((3U == button_index) &&
-         (BUTTON_EVENT_LONG_PRESS == button_event))
-      {
-        platform_err_t modem_ret;
-
-        modem_ret = remote_modem_config_app_diagnostic_request(now_ms);
-        plat_log_i("SW5 long press 4G diagnostic request ret=%d",
-                   (int32_t)modem_ret);
+        modem_ret = remote_modem_app_config_request(remote_modem_test_id,
+            (uint16_t)(sizeof(remote_modem_test_id) - 1U));
+        plat_log_i("SW4 4G config request accepted=%u ret=%d, test stack free=%lu words",
+                   (unsigned int)(PLATFORM_ERR_OK == modem_ret), (int32_t)modem_ret,
+                   (unsigned long)uxTaskGetStackHighWaterMark(NULL));
         continue;
       }
       if(BUTTON_EVENT_PRESS != button_event)
