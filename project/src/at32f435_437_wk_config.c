@@ -267,6 +267,7 @@ void wk_nvic_config(void)
   nvic_irq_enable(DMA1_Channel1_IRQn, 5, 0);
   nvic_irq_enable(DMA1_Channel2_IRQn, 5, 0);
   nvic_irq_enable(DMA1_Channel3_IRQn, 5, 0);
+  nvic_irq_enable(OTGFS2_IRQn, 5, 0);
   nvic_irq_enable(TMR20_OVF_IRQn, 0, 0);
 }
 

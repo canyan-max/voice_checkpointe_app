@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>AT32F435VGT7, USE_STDPERIPH_DRIVER, USE_DEBUG_LOG, LFS_DEFINES=lfs_config.h</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\04_Impl\mcu_at32;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\06_Component\ExternalChip\VTX316;..\..\06_Component\ExternalChip\CAT5171;..\..\06_Component\ExternalChip\GT20L16S1Y;..\..\06_Component\ExternalChip\HG25Q128B;..\..\06_Component\ExternalChip\E27_D;..\..\06_Component\Button;..\..\06_Component\Littlefs;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
+              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\04_Impl\mcu_at32;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\06_Component\ExternalChip\VTX316;..\..\06_Component\ExternalChip\CAT5171;..\..\06_Component\ExternalChip\GT20L16S1Y;..\..\06_Component\ExternalChip\HG25Q128B;..\..\06_Component\ExternalChip\E27_D;..\..\06_Component\Button;..\..\06_Component\Littlefs;../../middlewares/usb_drivers/inc;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -666,6 +666,21 @@
               <FileName>FreeRTOSConfig.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\inc\FreeRTOSConfig.h</FilePath>
+            </File>
+            <File>
+              <FileName>usb_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../src/usb_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_user.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../src/usbh_user.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_msc_diskio.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../src/usbh_msc_diskio.c</FilePath>
             </File>
           </Files>
         </Group>
@@ -1161,6 +1176,46 @@
               <FileName>lfs_config.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\06_Component\Littlefs\lfs_config.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>middlewares/usb_driver</GroupName>
+          <Files>
+            <File>
+              <FileName>usb_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../../middlewares/usb_drivers/src/usb_core.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_core.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../../middlewares/usb_drivers/src/usbh_core.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_int.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../../middlewares/usb_drivers/src/usbh_int.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_ctrl.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../../middlewares/usb_drivers/src/usbh_ctrl.c</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>usbh_class</GroupName>
+          <Files>
+            <File>
+              <FileName>usbh_msc_class.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../src/usbh_msc_class.c</FilePath>
+            </File>
+            <File>
+              <FileName>usbh_msc_bot_scsi.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../src/usbh_msc_bot_scsi.c</FilePath>
             </File>
           </Files>
         </Group>

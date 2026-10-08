@@ -102,7 +102,7 @@ platform_err_t bsp_hub_display_init(void)
     bsp_hub_display_initialized = 0U;
     bsp_hub_display_started = 0U;
     ret = bsp_hub_display_gpio_write(BOARD_GPIO_LED_POWER_CS,
-                                     BSP_HUB_DISPLAY_POWER_OFF);
+                                     BSP_HUB_DISPLAY_POWER_ON);//BSP_HUB_DISPLAY_POWER_OFF
     if(PLATFORM_ERR_OK == ret)
     {
         ret = bsp_hub_display_gpio_write(BOARD_GPIO_HUB_OE245,

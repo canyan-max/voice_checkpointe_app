@@ -8,6 +8,7 @@
 
 /* Includes ------------------------------------------------------------------*/
 #include "freertos_app.h"
+#include "usb_app.h"
 
 /* private includes ----------------------------------------------------------*/
 /* add user code begin private includes */
@@ -20,6 +21,10 @@
 #include "button.h"
 #include "voice_presentation_app.h"
 #include "remote_modem_app.h"
+#include "fatfs_disk.h"
+#include <string.h>
+#include "usb_core.h"
+#include "usbh_msc_class.h"
 /* add user code end private includes */
 
 /* private typedef -----------------------------------------------------------*/
@@ -29,7 +34,7 @@
 
 /* private define ------------------------------------------------------------*/
 /* add user code begin private define */
-#define START_TEST_TASK_STACK_WORDS       512U
+#define START_TEST_TASK_STACK_WORDS      1536U
 #define START_TEST_KEY_POLL_MS             10U
 #define START_TEST_KEY_DEBOUNCE_MS         30U
 #define START_TEST_KEY_LONG_PRESS_MS     1000U
@@ -57,6 +62,249 @@
 
 /* private user code ---------------------------------------------------------*/
 /* add user code begin 0 */
+
+/* Temporary board test. USB host polling and file I/O share this task. */
+extern otg_core_type otg_core_struct_fs2;
+extern disk_driver_type usbh_msc_disk;
+static FATFS usb_test_fs;
+static DIR usb_test_dir;
+static FIL usb_test_file;
+static FILINFO usb_test_info;
+static TCHAR usb_test_path[FF_MAX_LFN + 4U];
+static uint8_t usb_test_data[128];
+static char usb_test_name[96];
+
+/* UTF-16 names to bounded UTF-8 for the UART log. */
+static void usb_test_name_log(const TCHAR *name)
+{
+  unsigned int in = 0U, out = 0U;
+  while(name[in] != 0 && out + 4U < sizeof(usb_test_name))
+  {
+    uint32_t c = (uint32_t)name[in++];
+    if(c >= 0xD800U && c <= 0xDFFFU) c = '?';
+    if(c < 0x80U)
+      usb_test_name[out++] = (char)((c < 0x20U || c == 0x7FU) ? '?' : c);
+    else if(c < 0x800U)
+    {
+      usb_test_name[out++] = (char)(0xC0U | (c >> 6));
+      usb_test_name[out++] = (char)(0x80U | (c & 0x3FU));
+    }
+    else
+    {
+      usb_test_name[out++] = (char)(0xE0U | (c >> 12));
+      usb_test_name[out++] = (char)(0x80U | ((c >> 6) & 0x3FU));
+      usb_test_name[out++] = (char)(0x80U | (c & 0x3FU));
+    }
+  }
+  if(name[in] != 0) usb_test_name[out++] = '~';
+  usb_test_name[out] = 0;
+}
+
+
+/* Create a new file; never truncate an existing USB file. */
+static uint8_t usb_test_write_verify(void)
+{
+  static const char content[] =
+      "Voice checkpoint USB write test.\r\n"
+      "SD=0, USB=1. Write and read-back verification.\r\n";
+  static TCHAR path[] = _T("1:/usb_test_00.txt");
+  FRESULT result, sync_result, close_result;
+  UINT written = 0U, received = 0U;
+  unsigned int index;
+  uint8_t match;
+  for(index = 0U; index < 100U; index++)
+  {
+    path[12] = (TCHAR)('0' + index / 10U);
+    path[13] = (TCHAR)('0' + index % 10U);
+    result = f_open(&usb_test_file, path, FA_WRITE | FA_CREATE_NEW);
+    if(result != FR_EXIST) break;
+  }
+  if(index == 100U)
+  {
+    plat_log_w("USB_TEST write skipped: usb_test_00..99.txt already exist");
+    return 0U;
+  }
+  usb_test_name_log(path);
+  plat_log_i("USB_TEST create %s ret=%u", usb_test_name, (unsigned int)result);
+  if(result != FR_OK) return 0U;
+  result = f_write(&usb_test_file, content, sizeof(content) - 1U, &written);
+  sync_result = (result == FR_OK && written == sizeof(content) - 1U) ?
+      f_sync(&usb_test_file) : FR_DISK_ERR;
+  close_result = f_close(&usb_test_file);
+  plat_log_i("USB_TEST write ret=%u bytes=%u expected=%u sync=%u close=%u",
+      (unsigned int)result, (unsigned int)written,
+      (unsigned int)(sizeof(content) - 1U),
+      (unsigned int)sync_result, (unsigned int)close_result);
+  if(result != FR_OK || written != sizeof(content) - 1U ||
+     sync_result != FR_OK || close_result != FR_OK)
+    return 0U;
+  result = f_open(&usb_test_file, path, FA_READ);
+  plat_log_i("USB_TEST reopen ret=%u", (unsigned int)result);
+  if(result != FR_OK) return 0U;
+  match = (uint8_t)(f_size(&usb_test_file) == sizeof(content) - 1U);
+  result = f_read(&usb_test_file, usb_test_data, sizeof(usb_test_data), &received);
+  close_result = f_close(&usb_test_file);
+  match = (uint8_t)(match && result == FR_OK && close_result == FR_OK &&
+      received == sizeof(content) - 1U &&
+      memcmp(usb_test_data, content, sizeof(content) - 1U) == 0);
+  plat_log_i("USB_TEST verify ret=%u bytes=%u close=%u match=%u",
+      (unsigned int)result, (unsigned int)received,
+      (unsigned int)close_result, (unsigned int)match);
+  if(match)
+  {
+    usb_test_data[received] = 0U;
+    plat_log_i("USB_TEST TXT content: %s", (char *)usb_test_data);
+  }
+  return match;
+}
+
+static void usb_test_run(void)
+{
+  FRESULT result, close_result;
+  UINT bytes = 0U;
+  uint32_t started = plat_tick_get_ms();
+  unsigned int entries = 0U, i, j;
+  uint8_t have_file = 0U, dir_open = 0U, read_ok = 0U;
+  uint8_t list_ok = 0U, write_ok = 0U;
+  char hex[49], ascii[17];
+  static const char digits[] = "0123456789ABCDEF";
+  usb_test_path[0] = 0;
+  fatfs_disk.is_initialized[1] = 0U;
+  plat_log_i("USB_TEST ready: drive=1:/ blocks=%lu sector=%lu",
+      (unsigned long)usbh_msc.l_unit_n[0].capacity.blk_nbr,
+      (unsigned long)usbh_msc.l_unit_n[0].capacity.blk_size);
+  if(usbh_msc.l_unit_n[0].capacity.blk_size != 512U)
+  {
+    plat_log_e("USB_TEST unsupported sector size (requires 512)");
+    return;
+  }
+  result = f_mount(&usb_test_fs, _T("1:"), 1U);
+  plat_log_i("USB_TEST mount ret=%u", (unsigned int)result);
+  if(result != FR_OK) goto cleanup;
+  result = f_opendir(&usb_test_dir, _T("1:/"));
+  if(result != FR_OK)
+  {
+    plat_log_e("USB_TEST opendir ret=%u", (unsigned int)result);
+    goto cleanup;
+  }
+  dir_open = 1U;
+  while(entries < 32U)
+  {
+    if(otg_core_struct_fs2.host.conn_sts == 0U ||
+       (uint32_t)(plat_tick_get_ms() - started) >= 5000U)
+    {
+      plat_log_w("USB_TEST listing stopped: disconnect or 5s limit");
+      goto cleanup;
+    }
+    result = f_readdir(&usb_test_dir, &usb_test_info);
+    if(result != FR_OK)
+    {
+      plat_log_e("USB_TEST readdir ret=%u", (unsigned int)result);
+      goto cleanup;
+    }
+    if(usb_test_info.fname[0] == 0) break;
+    entries++;
+    usb_test_name_log(usb_test_info.fname);
+    plat_log_i("USB_TEST %s %s size=%lu",
+        (usb_test_info.fattrib & AM_DIR) ? "DIR" : "FILE",
+        usb_test_name, (unsigned long)usb_test_info.fsize);
+    if(!have_file && !(usb_test_info.fattrib & AM_DIR))
+    {
+      usb_test_path[0] = '1'; usb_test_path[1] = ':';
+      usb_test_path[2] = '/';
+      for(i = 0U; i < FF_MAX_LFN && usb_test_info.fname[i] != 0; i++)
+        usb_test_path[i + 3U] = usb_test_info.fname[i];
+      usb_test_path[i + 3U] = 0;
+      have_file = 1U;
+    }
+    vTaskDelay(pdMS_TO_TICKS(1U));
+  }
+  list_ok = 1U;
+  plat_log_i("USB_TEST root entries=%u%s", entries,
+      entries == 32U ? " (limit reached)" : "");
+  close_result = f_closedir(&usb_test_dir);
+  dir_open = 0U;
+  if(close_result != FR_OK)
+  {
+    plat_log_e("USB_TEST closedir ret=%u", (unsigned int)close_result);
+    goto cleanup;
+  }
+  if(!have_file)
+  {
+    plat_log_w("USB_TEST no root file to preview");
+    goto write_test;
+  }
+  if(otg_core_struct_fs2.host.conn_sts == 0U) goto cleanup;
+  usb_test_name_log(usb_test_path);
+  result = f_open(&usb_test_file, usb_test_path, FA_READ);
+  plat_log_i("USB_TEST open %s ret=%u", usb_test_name, (unsigned int)result);
+  if(result != FR_OK) goto cleanup;
+  result = f_read(&usb_test_file, usb_test_data, sizeof(usb_test_data), &bytes);
+  plat_log_i("USB_TEST read ret=%u bytes=%u", (unsigned int)result, (unsigned int)bytes);
+  close_result = f_close(&usb_test_file);
+  if(close_result != FR_OK)
+    plat_log_e("USB_TEST close ret=%u", (unsigned int)close_result);
+  if(result != FR_OK || close_result != FR_OK || bytes > sizeof(usb_test_data))
+    goto cleanup;
+  read_ok = 1U;
+  for(i = 0U; i < bytes; i += 16U)
+  {
+    for(j = 0U; j < 16U && i + j < bytes; j++)
+    {
+      uint8_t c = usb_test_data[i + j];
+      hex[j * 3U] = digits[c >> 4];
+      hex[j * 3U + 1U] = digits[c & 15U];
+      hex[j * 3U + 2U] = ' ';
+      ascii[j] = (c >= 32U && c < 127U) ? (char)c : '.';
+    }
+    hex[j * 3U] = 0; ascii[j] = 0;
+    plat_log_i("USB_TEST %03u: %s |%s|", i, hex, ascii);
+  }
+write_test:
+  if(otg_core_struct_fs2.host.conn_sts != 0U)
+    write_ok = usb_test_write_verify();
+cleanup:
+  if(dir_open) (void)f_closedir(&usb_test_dir);
+  close_result = f_mount(NULL, _T("1:"), 0U);
+  fatfs_disk.is_initialized[1] = 0U;
+  plat_log_i("USB_TEST done: list_ok=%u read_ok=%u write_ok=%u unmount=%u stack_free=%lu words",
+      (unsigned int)list_ok, (unsigned int)read_ok, (unsigned int)write_ok,
+      (unsigned int)close_result,
+      (unsigned long)uxTaskGetStackHighWaterMark(NULL));
+}
+
+static void usb_test_poll(void)
+{
+  static uint8_t connected = 0U, tested = 0U;
+  usbh_core_type *host = &otg_core_struct_fs2.host;
+  if(host->conn_sts == 0U)
+  {
+    if(connected) plat_log_i("USB_TEST disconnected; reinsert to repeat");
+    connected = 0U;
+    tested = 0U;
+    fatfs_disk.is_initialized[1] = 0U;
+    return;
+  }
+  if(!connected)
+  {
+    connected = 1U;
+    plat_log_i("USB_TEST attached, waiting for MSC ready");
+  }
+  if(tested || host->global_state != USBH_CLASS ||
+     host->class_handler == NULL || host->class_handler->pdata == NULL ||
+     usbh_msc.state != USBH_MSC_IDLE ||
+     usbh_msc.l_unit_n[0].state != USBH_MSC_IDLE ||
+     usbh_msc_is_ready(host, 0U) != MSC_OK)
+    return;
+  tested = 1U;
+  if(fatfs_disk.disk[1] != &usbh_msc_disk || fatfs_disk.lun[1] != 0U)
+  {
+    plat_log_e("USB_TEST drive 1 not registered as USB LUN0");
+    return;
+  }
+  usb_test_run();
+}
+
 /* add user code end 0 */
 
 /* task handler */
@@ -149,7 +397,7 @@ void freertos_task_create(void)
   /* create start_test_tasks task */
   xTaskCreate(start_or_test_f,
               "start_test_tasks",
-              512,
+              START_TEST_TASK_STACK_WORDS,
               NULL,
               0,
               &start_test_tasks_handle);
@@ -262,6 +510,7 @@ void start_or_test_f(void *pvParameters)
 
   /* add user code begin start_or_test_f 2 */
   log_ret = plat_log_init();
+  plat_log_i("USB_TEST enabled: FAT32 drive=1:/, root max=32, first file preview=128 bytes, TXT write+verify");
   plat_log_i("Audio MP3 application start, log_init=%d", (int32_t)log_ret);
   volume_ret = audio_volume_service_init(&volume_service,
                                          START_TEST_I2C_TIMEOUT_MS);
@@ -319,7 +568,12 @@ void start_or_test_f(void *pvParameters)
   /* Infinite loop */
   while(1)
   {
+    /* when use usb,the function wk_usb_app_task() will be generated,
+       which is the usb application layer code that users can improve themselves */
+    wk_usb_app_task();
+
   /* add user code begin start_or_test_f 1 */
+    usb_test_poll();
 
     now_ms = plat_tick_get_ms();
     for(button_index = 0U;

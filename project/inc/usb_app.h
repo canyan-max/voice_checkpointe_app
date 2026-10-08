@@ -1,8 +1,8 @@
 /* add user code begin Header */
 /**
   **************************************************************************
-  * @file     at32f435_437_int.h
-  * @brief    header file of main interrupt service routines.
+  * @file     usb_app.h
+  * @brief    usb application config header file
   **************************************************************************
   * Copyright (c) 2025, Artery Technology, All rights reserved.
   *
@@ -25,22 +25,24 @@
 /* add user code end Header */
 
 /* define to prevent recursive inclusion -------------------------------------*/
-#ifndef __AT32F435_437_INT_H
-#define __AT32F435_437_INT_H
+#ifndef __USB_APP_H
+#define __USB_APP_H
 
 #ifdef __cplusplus
 extern "C" {
 #endif
 
-/* includes ------------------------------------------------------------------*/
-#include "at32f435_437.h"
-
-/* private includes ----------------------------------------------------------*/
+/* private includes -------------------------------------------------------------*/
 /* add user code begin private includes */
 
 /* add user code end private includes */
 
-/* exported types ------------------------------------------------------------*/
+/* private define ------------------------------------------------------------*/
+/* add user code begin private define */
+
+/* add user code end private define */
+
+/* exported types -------------------------------------------------------------*/
 /* add user code begin exported types */
 
 /* add user code end exported types */
@@ -55,24 +57,11 @@ extern "C" {
 
 /* add user code end exported macro */
 
-/* exported functions ------------------------------------------------------- */
-void NMI_Handler(void);
-void HardFault_Handler(void);
-void MemManage_Handler(void);
-void BusFault_Handler(void);
-void UsageFault_Handler(void);
-void DebugMon_Handler(void);
-void SysTick_Handler(void);
+void wk_usb_app_init(void);
 
-void EDMA_Stream1_IRQHandler(void);
-void USART1_IRQHandler(void);
-void USART2_IRQHandler(void);
-void USART3_IRQHandler(void);
-void DMA1_Channel1_IRQHandler(void);
-void DMA1_Channel2_IRQHandler(void);
-void DMA1_Channel3_IRQHandler(void);
-void OTGFS2_IRQHandler(void);
-void TMR20_OVF_IRQHandler(void);
+void wk_usb_app_task(void);
+
+void wk_otgfs2_irq_handler(void);
 
 /* add user code begin exported functions */
 

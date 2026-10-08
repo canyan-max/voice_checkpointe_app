@@ -37,6 +37,7 @@
 #include "wk_dma.h"
 #include "wk_edma.h"
 #include "wk_gpio.h"
+#include "usb_app.h"
 #include "wk_system.h"
 #include "freertos_app.h"
 #include "fatfs_disk.h"
@@ -186,6 +187,9 @@ int main(void)
 
   /* init i2c2 function. */
   wk_i2c2_init();
+
+  /* init usb app function. */
+  wk_usb_app_init();
 
   /* add user code begin 2 */
 

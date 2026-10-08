@@ -165,13 +165,15 @@
     <FATFS>
         <Mode>
             <ModeSub name="SDIO" value="TRUE"/>
+            <ModeSub name="USB" value="TRUE"/>
         </Mode>
         <Parameters>
             <ParametersSub name="SDIO_Instance" value="SDIO2"/>
-            <ParametersSub name="USBH_Instance" value="null"/>
+            <ParametersSub name="USBH_Instance" value="otg_core_struct_fs2"/>
+            <ParametersSub name="FF_CODE_PAGE" value="936"/>
             <ParametersSub name="FF_USE_LFN" value="2"/>
             <ParametersSub name="FF_LFN_UNICODE" value="1"/>
-            <ParametersSub name="FF_VOLUMES" value="1"/>
+            <ParametersSub name="FF_VOLUMES" value="2"/>
             <ParametersSub name="FF_FS_REENTRANT" value="1"/>
             <ParametersSub name="FF_SYNC_t" value="SemaphoreHandle_t"/>
         </Parameters>
@@ -203,6 +205,11 @@
             </ParametersGroup>
         </Tasks>
     </FREERTOS>
+    <USB_HOST>
+        <Mode>
+            <ModeSub name="OTGFS2_Host" value="MSC"/>
+        </Mode>
+    </USB_HOST>
     <DMA>
         <USART1_RX>
             <ParametersSub name="Instance" value="DMA1_Channel2"/>
@@ -269,7 +276,7 @@
         <DMA1_Channel2_IRQHandler>1;5;0;1;0;1</DMA1_Channel2_IRQHandler>
         <DMA1_Channel3_IRQHandler>1;5;0;1;0;1</DMA1_Channel3_IRQHandler>
         <OTGFS2_WKUP_IRQHandler>0;5;0;1;0;0</OTGFS2_WKUP_IRQHandler>
-        <OTGFS2_IRQHandler>0;5;0;1;0;0</OTGFS2_IRQHandler>
+        <OTGFS2_IRQHandler>1;5;0;1;0;1</OTGFS2_IRQHandler>
         <FPU_IRQHandler>0;5;0;1;0;0</FPU_IRQHandler>
         <QSPI1_IRQHandler>0;5;0;1;0;0</QSPI1_IRQHandler>
         <DMAMUX_IRQHandler>0;5;0;1;0;0</DMAMUX_IRQHandler>
@@ -706,5 +713,6 @@
         <RankSub RankNum="101" FixPosFlag="FALSE" FuncName="fatfs_disk_init" InstanceName="FATFS" CodeSection="fatfs_app_init" MainDoNotCallFlag="FALSE"/>
         <RankSub RankNum="51" FixPosFlag="FALSE" FuncName="wk_uart5_init" InstanceName="UART5" CodeSection="uart5 function" MainDoNotCallFlag="FALSE"/>
         <RankSub RankNum="73" FixPosFlag="FALSE" FuncName="wk_i2c2_init" InstanceName="I2C2" CodeSection="i2c2 function" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="99" FixPosFlag="FALSE" FuncName="wk_usb_app_init" InstanceName="USB_DEVICE/USB_HOST" CodeSection="usb_app_init" MainDoNotCallFlag="FALSE"/>
     </FunctionRankInfo>
 </Root>

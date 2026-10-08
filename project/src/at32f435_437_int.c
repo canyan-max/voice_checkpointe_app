@@ -26,6 +26,7 @@
 
 /* includes ------------------------------------------------------------------*/
 #include "at32f435_437_int.h"
+#include "usb_app.h"
 #include "wk_system.h"
 #include "freertos_app.h"
 
@@ -438,6 +439,24 @@ void DMA1_Channel3_IRQHandler(void)
   /* add user code begin DMA1_Channel3_IRQ 1 */
 
   /* add user code end DMA1_Channel3_IRQ 1 */
+}
+
+/**
+  * @brief  this function handles OTGFS2 handler.
+  * @param  none
+  * @retval none
+  */
+void OTGFS2_IRQHandler(void)
+{
+  /* add user code begin OTGFS2_IRQ 0 */
+
+  /* add user code end OTGFS2_IRQ 0 */
+
+  wk_otgfs2_irq_handler();
+
+  /* add user code begin OTGFS2_IRQ 1 */
+
+  /* add user code end OTGFS2_IRQ 1 */
 }
 
 /**
