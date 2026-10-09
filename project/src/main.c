@@ -27,6 +27,7 @@
 /* Includes ------------------------------------------------------------------*/
 #include "at32f435_437_wk_config.h"
 #include "wk_adc.h"
+#include "wk_exint.h"
 #include "wk_i2c.h"
 #include "wk_i2s.h"
 #include "wk_qspi.h"
@@ -190,6 +191,9 @@ int main(void)
 
   /* init usb app function. */
   wk_usb_app_init();
+
+  /* init exint function. */
+  wk_exint_config();
 
   /* add user code begin 2 */
 

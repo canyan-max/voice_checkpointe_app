@@ -48,6 +48,7 @@
 - 在中断上下文必须使用 `taskENTER_CRITICAL_FROM_ISR()` 和 `taskEXIT_CRITICAL_FROM_ISR()`，并正确保存、恢复中断屏蔽状态；禁止在 ISR 中使用任务上下文版本。
 - `taskENTER_CRITICAL()` 只屏蔽 FreeRTOS 配置范围内的中断，不得将其视为关闭全部中断。
 - 任务间的长期互斥优先使用互斥量、队列或任务通知；临界区只用于保护耗时极短的共享状态读写。
+- 最好不使用goto语句,如果要使用goto语句,不允许乱跳转或重跳转,例如if(xxx){go A} A:goto B,不允许出现N个goto分支,goto标签尽可能保持在2个左右
 
 ## 3. 构建与烧录
 

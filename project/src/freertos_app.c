@@ -21,6 +21,7 @@
 #include "button.h"
 #include "voice_presentation_app.h"
 #include "remote_modem_app.h"
+#include "sd_card_presence_app.h"
 #include "fatfs_disk.h"
 #include <string.h>
 #include "usb_core.h"
@@ -62,6 +63,74 @@
 
 /* private user code ---------------------------------------------------------*/
 /* add user code begin 0 */
+
+/* Temporary EXINT board test: ISR owns counters, this task owns logging.
+ * No debounce; multiple edges can be reported together by the task. */
+static volatile uint32_t gpio_irq_test_count[2];
+static uint32_t gpio_irq_test_reported[2];
+static const plat_gpio_id_t gpio_irq_test_ids[2] =
+{
+  BOARD_GPIO_ALARM_IN, BOARD_GPIO_PIR_IN
+};
+static const char *const gpio_irq_test_names[2] =
+{
+  "ALARM_IN PD7", "PIR_IN PC10"
+};
+
+static void gpio_irq_test_callback(plat_gpio_id_t id)
+{
+  if(id == BOARD_GPIO_ALARM_IN)
+    gpio_irq_test_count[0]++;
+  else if(id == BOARD_GPIO_PIR_IN)
+    gpio_irq_test_count[1]++;
+}
+
+static void gpio_irq_test_init(void)
+{
+  unsigned int index;
+  platform_err_t result;
+
+  for(index = 0U; index < 2U; index++)
+  {
+    result = plat_gpio_irq_disable(gpio_irq_test_ids[index]);
+    if(result == PLATFORM_ERR_OK)
+      result = plat_gpio_set_irq_callback(gpio_irq_test_ids[index],
+                                           gpio_irq_test_callback);
+    if(result == PLATFORM_ERR_OK)
+      result = plat_gpio_irq_enable(gpio_irq_test_ids[index]);
+    if(result == PLATFORM_ERR_OK)
+      plat_log_i("EXTI_TEST ready: %s falling edge", gpio_irq_test_names[index]);
+    else
+      plat_log_e("EXTI_TEST init failed: %s ret=%d",
+                 gpio_irq_test_names[index], (int)result);
+  }
+}
+
+static void gpio_irq_test_poll(void)
+{
+  uint32_t snapshot[2];
+  uint32_t delta;
+  unsigned int index;
+
+  /* Priority-5 EXINTs are masked only during this two-word snapshot. */
+  taskENTER_CRITICAL();
+  snapshot[0] = gpio_irq_test_count[0];
+  snapshot[1] = gpio_irq_test_count[1];
+  taskEXIT_CRITICAL();
+
+  for(index = 0U; index < 2U; index++)
+  {
+    delta = snapshot[index] - gpio_irq_test_reported[index];
+    if(delta != 0U)
+    {
+      gpio_irq_test_reported[index] = snapshot[index];
+      plat_log_i("EXTI_TEST %s falling: delta=%lu total=%lu stack_free=%lu words",
+                 gpio_irq_test_names[index], (unsigned long)delta,
+                 (unsigned long)snapshot[index],
+                 (unsigned long)uxTaskGetStackHighWaterMark(NULL));
+    }
+  }
+}
 
 /* Temporary board test. USB host polling and file I/O share this task. */
 extern otg_core_type otg_core_struct_fs2;
@@ -397,7 +466,7 @@ void freertos_task_create(void)
   /* create start_test_tasks task */
   xTaskCreate(start_or_test_f,
               "start_test_tasks",
-              START_TEST_TASK_STACK_WORDS,
+              512,
               NULL,
               0,
               &start_test_tasks_handle);
@@ -510,6 +579,10 @@ void start_or_test_f(void *pvParameters)
 
   /* add user code begin start_or_test_f 2 */
   log_ret = plat_log_init();
+  gpio_irq_test_init();
+  plat_log_i("TF_CD_TEST app init ret=%d, debounce=50 ms",
+             (int)sd_card_presence_app_init());
+  sd_card_presence_app_poll();
   plat_log_i("USB_TEST enabled: FAT32 drive=1:/, root max=32, first file preview=128 bytes, TXT write+verify");
   plat_log_i("Audio MP3 application start, log_init=%d", (int32_t)log_ret);
   volume_ret = audio_volume_service_init(&volume_service,
@@ -573,6 +646,8 @@ void start_or_test_f(void *pvParameters)
     wk_usb_app_task();
 
   /* add user code begin start_or_test_f 1 */
+    gpio_irq_test_poll();
+    sd_card_presence_app_poll();
     usb_test_poll();
 
     now_ms = plat_tick_get_ms();

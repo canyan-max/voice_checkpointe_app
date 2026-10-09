@@ -77,7 +77,7 @@ extern "C" {
 #define MISC_MODULE_ENABLED
 #define QSPI_MODULE_ENABLED
 /*#define DVP_MODULE_ENABLED----------------------*/
-/*#define SCFG_MODULE_ENABLED---------------------*/
+#define SCFG_MODULE_ENABLED
 /*#define EMAC_MODULE_ENABLED---------------------*/
 
 /* includes ------------------------------------------------------------------*/

@@ -35,6 +35,7 @@
 #include "board_resources.h"
 #include "plat_i2s.h"
 #include "plat_uart.h"
+#include "plat_gpio.h"
 
 /* add user code end private includes */
 
@@ -250,6 +251,29 @@ void EDMA_Stream1_IRQHandler(void)
 }
 
 /**
+  * @brief  this function handles EXINT Line [9:5] handler.
+  * @param  none
+  * @retval none
+  */
+void EXINT9_5_IRQHandler(void)
+{
+  /* add user code begin EXINT9_5_IRQ 0 */
+
+  /* add user code end EXINT9_5_IRQ 0 */
+
+  if(exint_interrupt_flag_get(EXINT_LINE_7) != RESET)
+  {
+    /* add user code begin EXINT_LINE_7 */
+    plat_gpio_irq_handler(BOARD_GPIO_ALARM_IN);
+    /* add user code end EXINT_LINE_7 */ 
+  }
+
+  /* add user code begin EXINT9_5_IRQ 1 */
+
+  /* add user code end EXINT9_5_IRQ 1 */
+}
+
+/**
   * @brief  this function handles USART1 handler.
   * @param  none
   * @retval none
@@ -319,6 +343,29 @@ void USART3_IRQHandler(void)
   /* add user code begin USART3_IRQ 1 */
 
   /* add user code end USART3_IRQ 1 */
+}
+
+/**
+  * @brief  this function handles EXINT Line [15:10] handler.
+  * @param  none
+  * @retval none
+  */
+void EXINT15_10_IRQHandler(void)
+{
+  /* add user code begin EXINT15_10_IRQ 0 */
+
+  /* add user code end EXINT15_10_IRQ 0 */
+
+  if(exint_interrupt_flag_get(EXINT_LINE_10) != RESET)
+  {
+    /* add user code begin EXINT_LINE_10 */
+    plat_gpio_irq_handler(BOARD_GPIO_PIR_IN);
+    /* add user code end EXINT_LINE_10 */ 
+  }
+
+  /* add user code begin EXINT15_10_IRQ 1 */
+
+  /* add user code end EXINT15_10_IRQ 1 */
 }
 
 /**

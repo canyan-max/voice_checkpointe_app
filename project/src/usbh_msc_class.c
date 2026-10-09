@@ -452,32 +452,28 @@ usb_sts_type usbh_msc_rw_handle(void *uhost, uint32_t address, uint32_t len, uin
 usb_sts_type usbh_msc_read(void *uhost, uint32_t address, uint32_t len, uint8_t *buffer, uint8_t lun)
 {
   usbh_core_type *puhost = (usbh_core_type *)uhost;
-  usbh_msc_type *pmsc;
-  uint32_t timeout;
-  usb_sts_type status;
-  if(puhost == NULL || buffer == NULL || len == 0U ||
-     lun >= USBH_SUPPORT_MAX_LUN || puhost->class_handler == NULL ||
-     puhost->class_handler->pdata == NULL)
+  usbh_msc_type *pmsc = (usbh_msc_type *)puhost->class_handler->pdata;
+  uint32_t timeout = 0;
+  if(puhost->conn_sts == 0 || puhost->global_state != USBH_CLASS
+    || pmsc->l_unit_n[lun].state != USBH_MSC_IDLE)
+  {
     return USB_FAIL;
-  pmsc = (usbh_msc_type *)puhost->class_handler->pdata;
-  if(puhost->conn_sts == 0U || puhost->global_state != USBH_CLASS ||
-     pmsc->l_unit_n[lun].state != USBH_MSC_IDLE ||
-     address >= pmsc->l_unit_n[lun].capacity.blk_nbr ||
-     len > pmsc->l_unit_n[lun].capacity.blk_nbr - address)
-    return USB_FAIL;
+  }
   pmsc->bot_trans.msc_struct = puhost->class_handler->pdata;
   pmsc->l_unit_n[lun].state = USBH_MSC_READ10;
   pmsc->use_lun = lun;
+
   timeout = puhost->timer;
-  while((status = usbh_msc_rw_handle(uhost, address, len, buffer, lun)) == USB_WAIT)
+
+  while(usbh_msc_rw_handle(uhost, address, len, buffer, lun) == USB_WAIT)
   {
-    if(puhost->conn_sts == 0U || (uint32_t)(puhost->timer - timeout) > 2000U)
+    if(puhost->conn_sts == 0 || (puhost->timer - timeout) > (len * 10000))
     {
       pmsc->l_unit_n[lun].state = USBH_MSC_IDLE;
       return USB_FAIL;
     }
   }
-  return status;
+  return USB_OK;
 }
 
 /**
@@ -492,32 +488,28 @@ usb_sts_type usbh_msc_read(void *uhost, uint32_t address, uint32_t len, uint8_t 
 usb_sts_type usbh_msc_write(void *uhost, uint32_t address, uint32_t len, uint8_t *buffer, uint8_t lun)
 {
   usbh_core_type *puhost = (usbh_core_type *)uhost;
-  usbh_msc_type *pmsc;
-  uint32_t timeout;
-  usb_sts_type status;
-  if(puhost == NULL || buffer == NULL || len == 0U ||
-     lun >= USBH_SUPPORT_MAX_LUN || puhost->class_handler == NULL ||
-     puhost->class_handler->pdata == NULL)
+  usbh_msc_type *pmsc = (usbh_msc_type *)puhost->class_handler->pdata;
+  uint32_t timeout = 0;
+  if(puhost->conn_sts == 0 || puhost->global_state != USBH_CLASS
+    || pmsc->l_unit_n[lun].state != USBH_MSC_IDLE)
+  {
     return USB_FAIL;
-  pmsc = (usbh_msc_type *)puhost->class_handler->pdata;
-  if(puhost->conn_sts == 0U || puhost->global_state != USBH_CLASS ||
-     pmsc->l_unit_n[lun].state != USBH_MSC_IDLE ||
-     address >= pmsc->l_unit_n[lun].capacity.blk_nbr ||
-     len > pmsc->l_unit_n[lun].capacity.blk_nbr - address)
-    return USB_FAIL;
+  }
+
   pmsc->bot_trans.msc_struct = puhost->class_handler->pdata;
   pmsc->l_unit_n[lun].state = USBH_MSC_WRITE;
   pmsc->use_lun = lun;
+
   timeout = puhost->timer;
-  while((status = usbh_msc_rw_handle(uhost, address, len, buffer, lun)) == USB_WAIT)
+  while(usbh_msc_rw_handle(uhost, address, len, buffer, lun) == USB_WAIT)
   {
-    if(puhost->conn_sts == 0U || (uint32_t)(puhost->timer - timeout) > 2000U)
+    if(puhost->conn_sts == 0 || (puhost->timer - timeout) > (len * 10000))
     {
       pmsc->l_unit_n[lun].state = USBH_MSC_IDLE;
       return USB_FAIL;
     }
   }
-  return status;
+  return USB_OK;
 }
 
 /**

@@ -68,7 +68,8 @@ static const at32f435_gpio_cfg_t gpio_cfg[BOARD_GPIO_RESOURCE_NUM] =
     AT32F435_GPIO_CFG_ENTRY(KEY1),
     AT32F435_GPIO_CFG_ENTRY(KEY2),
     AT32F435_GPIO_CFG_ENTRY(KEY3),
-    AT32F435_GPIO_CFG_ENTRY(KEY4)
+    AT32F435_GPIO_CFG_ENTRY(KEY4),
+    AT32F435_GPIO_CFG_ENTRY(TF_CD)
 };
 
 _Static_assert((sizeof(gpio_cfg) / sizeof(gpio_cfg[0])) ==
@@ -88,6 +89,102 @@ static const at32f435_gpio_cfg_t *at32f435_gpio_get_cfg(plat_gpio_id_t id)
     return &gpio_cfg[id];
 }
 /* exported functions -------------------------------------------------------*/
+typedef struct
+{
+    plat_gpio_id_t id;
+    uint32_t line;
+    plat_gpio_irq_cb_t callback;
+} at32f435_gpio_irq_cfg_t;
+
+static at32f435_gpio_irq_cfg_t gpio_irq_cfg[] =
+{
+    {BOARD_GPIO_ALARM_IN, BOARD_GPIO_ALARM_IN_EXINT_LINE, NULL},
+    {BOARD_GPIO_PIR_IN, BOARD_GPIO_PIR_IN_EXINT_LINE, NULL}
+};
+
+static at32f435_gpio_irq_cfg_t *at32f435_gpio_get_irq_cfg(plat_gpio_id_t id)
+{
+    uint32_t index;
+
+    if(NULL == at32f435_gpio_get_cfg(id))
+    {
+        return NULL;
+    }
+    for(index = 0U; index < sizeof(gpio_irq_cfg) / sizeof(gpio_irq_cfg[0]); index++)
+    {
+        if(gpio_irq_cfg[index].id == id)
+        {
+            return &gpio_irq_cfg[index];
+        }
+    }
+    return NULL;
+}
+
+platform_err_t plat_gpio_set_irq_callback(plat_gpio_id_t id,
+                                         plat_gpio_irq_cb_t cb)
+{
+    at32f435_gpio_irq_cfg_t *p_cfg = at32f435_gpio_get_irq_cfg(id);
+
+    if(NULL == p_cfg)
+    {
+        return PLATFORM_ERR_PARAM;
+    }
+    if(0U != (EXINT->inten & p_cfg->line))
+    {
+        return PLATFORM_ERR_BUSY;
+    }
+    p_cfg->callback = cb;
+    return PLATFORM_ERR_OK;
+}
+
+platform_err_t plat_gpio_irq_disable(plat_gpio_id_t id)
+{
+    at32f435_gpio_irq_cfg_t *p_cfg = at32f435_gpio_get_irq_cfg(id);
+
+    if(NULL == p_cfg)
+    {
+        return PLATFORM_ERR_PARAM;
+    }
+    exint_interrupt_enable(p_cfg->line, FALSE);
+    exint_flag_clear(p_cfg->line);
+    return PLATFORM_ERR_OK;
+}
+
+platform_err_t plat_gpio_irq_enable(plat_gpio_id_t id)
+{
+    at32f435_gpio_irq_cfg_t *p_cfg = at32f435_gpio_get_irq_cfg(id);
+
+    if(NULL == p_cfg)
+    {
+        return PLATFORM_ERR_PARAM;
+    }
+    if(NULL == p_cfg->callback)
+    {
+        return PLATFORM_ERR_PARAM;
+    }
+    exint_flag_clear(p_cfg->line);
+    exint_interrupt_enable(p_cfg->line, TRUE);
+    return PLATFORM_ERR_OK;
+}
+
+void plat_gpio_irq_handler(plat_gpio_id_t id)
+{
+    at32f435_gpio_irq_cfg_t *p_cfg = at32f435_gpio_get_irq_cfg(id);
+    plat_gpio_irq_cb_t callback;
+
+    if((NULL == p_cfg) ||
+       (RESET == exint_interrupt_flag_get(p_cfg->line)))
+    {
+        return;
+    }
+    exint_flag_clear(p_cfg->line);
+    callback = p_cfg->callback;
+    if(NULL != callback)
+    {
+        callback(id);
+    }
+}
+
 platform_err_t plat_gpio_write(plat_gpio_id_t id, plat_gpio_state_t state)
 {
     const at32f435_gpio_cfg_t *p_cfg = at32f435_gpio_get_cfg(id);

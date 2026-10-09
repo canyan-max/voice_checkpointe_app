@@ -23,6 +23,8 @@ extern "C"
 platform_err_t audio_playback_app_init(void);
 platform_err_t audio_playback_app_play(
     const audio_data_source_t *p_source);
+/* Built-in SD source: BUSY until card presence is confirmed, HW when absent.
+ * OK means request enqueued; presence is checked again before startup. */
 platform_err_t audio_playback_app_play_default(void);
 platform_err_t audio_playback_app_voice_speak(
     bsp_voice_synthesis_encoding_t encoding,

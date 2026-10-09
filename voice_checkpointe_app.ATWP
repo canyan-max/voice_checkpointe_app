@@ -48,6 +48,16 @@
             <ModeSub name="Debug interface" value="SWD"/>
         </Mode>
     </DEBUG>
+    <EXINT>
+        <Mode>
+            <ModeSub name="EXINT7" value="TRUE"/>
+            <ModeSub name="EXINT10" value="TRUE"/>
+        </Mode>
+        <Parameters>
+            <ParametersSub name="TriggerPolarity_7" value="EXINT_TRIGGER_FALLING_EDGE"/>
+            <ParametersSub name="TriggerPolarity_10" value="EXINT_TRIGGER_FALLING_EDGE"/>
+        </Parameters>
+    </EXINT>
     <I2C2>
         <Mode>
             <ModeSub name="I2C" value="I2C"/>
@@ -264,12 +274,14 @@
         <CRM_IRQHandler>0;5;0;1;0;0</CRM_IRQHandler>
         <EDMA_Stream1_IRQHandler>1;5;0;1;0;1</EDMA_Stream1_IRQHandler>
         <ADC1_2_3_IRQHandler>0;5;0;1;0;0</ADC1_2_3_IRQHandler>
+        <EXINT9_5_IRQHandler>1;5;0;1;0;1</EXINT9_5_IRQHandler>
         <I2C2_EVT_IRQHandler>0;5;0;1;0;0</I2C2_EVT_IRQHandler>
         <I2C2_ERR_IRQHandler>0;5;0;1;0;0</I2C2_ERR_IRQHandler>
         <SPI1_IRQHandler>0;5;0;1;0;0</SPI1_IRQHandler>
         <USART1_IRQHandler>1;5;0;1;0;1</USART1_IRQHandler>
         <USART2_IRQHandler>1;5;0;1;0;1</USART2_IRQHandler>
         <USART3_IRQHandler>1;5;0;1;0;1</USART3_IRQHandler>
+        <EXINT15_10_IRQHandler>1;5;0;1;0;1</EXINT15_10_IRQHandler>
         <SPI3_I2S3EXT_IRQHandler>0;5;0;1;0;0</SPI3_I2S3EXT_IRQHandler>
         <UART5_IRQHandler>0;5;0;1;0;0</UART5_IRQHandler>
         <DMA1_Channel1_IRQHandler>1;5;0;1;0;1</DMA1_Channel1_IRQHandler>
@@ -304,6 +316,7 @@
             <Parameters name="Label" value="TPA_MUTE_PE6"/>
         </Signal>
         <Signal SignalName="GPIO_Input" PinName="PC13">
+            <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="SDIO2_TFCD_PC13"/>
         </Signal>
         <Signal SignalName="SDIO2_D0" PinName="PC0">
@@ -340,6 +353,7 @@
             <Parameters name="Label" value="IIS_LR_WS_PA4"/>
         </Signal>
         <Signal SignalName="GPIO_Output" PinName="PA5">
+            <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
             <Parameters name="Label" value="PIR_POWER_PA5"/>
         </Signal>
         <Signal SignalName="QSPI1_IO0" PinName="PA6">
@@ -491,7 +505,7 @@
             <Parameters name="GPIO_DriverCapability" value="GPIO_DRIVE_STRENGTH_STRONGER"/>
             <Parameters name="Label" value="SPI3GT_CS_PA15"/>
         </Signal>
-        <Signal SignalName="GPIO_Input" PinName="PC10">
+        <Signal SignalName="EXINT10" PinName="PC10">
             <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="PIR_IN_PC10"/>
         </Signal>
@@ -530,7 +544,7 @@
             <Parameters name="GPIO_Outputlevel" value="GPIO_OUTPUTLEVEL_HIGH"/>
             <Parameters name="Label" value="HUB_OE245_PD6"/>
         </Signal>
-        <Signal SignalName="GPIO_Input" PinName="PD7">
+        <Signal SignalName="EXINT7" PinName="PD7">
             <Parameters name="GPIO_PullType_Set" value="GPIO_PULL_UP"/>
             <Parameters name="Label" value="ALARM_IN_PD7"/>
         </Signal>
@@ -653,7 +667,7 @@
         <PinSub pinname="PH2" signalname="I2C2_SCL" signaltype="3"/>
         <PinSub pinname="PA14" signalname="DEBUG_JTCK_SWCLK" signaltype="2"/>
         <PinSub pinname="PA15" signalname="GPIO_Output" signaltype="3"/>
-        <PinSub pinname="PC10" signalname="GPIO_Input" signaltype="3"/>
+        <PinSub pinname="PC10" signalname="EXINT10" signaltype="3"/>
         <PinSub pinname="PC11" signalname="QSPI1_CS" signaltype="2"/>
         <PinSub pinname="PC12" signalname="I2C2_SDA" signaltype="2"/>
         <PinSub pinname="PD0" signalname="GPIO_Output" signaltype="3"/>
@@ -663,7 +677,7 @@
         <PinSub pinname="PD4" signalname="GPIO_Output" signaltype="3"/>
         <PinSub pinname="PD5" signalname="GPIO_Output" signaltype="3"/>
         <PinSub pinname="PD6" signalname="GPIO_Output" signaltype="3"/>
-        <PinSub pinname="PD7" signalname="GPIO_Input" signaltype="3"/>
+        <PinSub pinname="PD7" signalname="EXINT7" signaltype="3"/>
         <PinSub pinname="PB3" signalname="I2S1_CK" signaltype="2"/>
         <PinSub pinname="PB4" signalname="SPI3_MISO" signaltype="3"/>
         <PinSub pinname="PB5" signalname="I2S1_SD" signaltype="2"/>
@@ -714,5 +728,6 @@
         <RankSub RankNum="51" FixPosFlag="FALSE" FuncName="wk_uart5_init" InstanceName="UART5" CodeSection="uart5 function" MainDoNotCallFlag="FALSE"/>
         <RankSub RankNum="73" FixPosFlag="FALSE" FuncName="wk_i2c2_init" InstanceName="I2C2" CodeSection="i2c2 function" MainDoNotCallFlag="FALSE"/>
         <RankSub RankNum="99" FixPosFlag="FALSE" FuncName="wk_usb_app_init" InstanceName="USB_DEVICE/USB_HOST" CodeSection="usb_app_init" MainDoNotCallFlag="FALSE"/>
+        <RankSub RankNum="79" FixPosFlag="FALSE" FuncName="wk_exint_config" InstanceName="EXINT" CodeSection="exint function" MainDoNotCallFlag="FALSE"/>
     </FunctionRankInfo>
 </Root>

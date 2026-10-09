@@ -19,6 +19,8 @@
 #include "mp3_decoder_service.h"
 #include "plat_log.h"
 #include "voice_presentation_app.h"
+#include "sd_card_presence_app.h"
+#include "sd_disk_state.h"
 
 #define AUDIO_APP_PCM_BLOCK_COUNT             (4U)
 #define AUDIO_APP_START_PREBUFFER_BLOCKS      (AUDIO_APP_PCM_BLOCK_COUNT)
@@ -42,8 +44,9 @@
 #define AUDIO_APP_PLAYER_NOTIFY_DMA_HALF      (1UL << 4)
 #define AUDIO_APP_PLAYER_NOTIFY_DMA_FULL      (1UL << 5)
 #define AUDIO_APP_PLAYER_NOTIFY_DMA_ERROR     (1UL << 6)
+#define AUDIO_APP_PLAYER_NOTIFY_DECODE_DONE   (1UL << 7)
 
-#define AUDIO_APP_DECODER_NOTIFY_STOP         (1UL << 0)
+
 
 typedef enum AUDIO_APP_PLAYER_COMMAND_TYPE_T
 {
@@ -60,18 +63,22 @@ typedef struct AUDIO_APP_PLAYER_COMMAND_T
     bsp_voice_synthesis_encoding_t  voice_encoding;
     uint16_t                        voice_text_size;
     uint8_t                         emergency_active;
+    uint32_t                        sd_generation;
 } audio_app_player_command_t;
 
 typedef struct AUDIO_APP_DECODE_COMMAND_T
 {
     audio_data_source_t source;
     uint32_t            session_id;
+    uint32_t            sd_generation;
 } audio_app_decode_command_t;
 
 typedef struct AUDIO_APP_PLAYER_RUNTIME_T
 {
     uint32_t session_id;
     uint8_t  decoder_eof;
+    uint8_t  sd_active;
+    uint32_t sd_generation;
 } audio_app_player_runtime_t;
 
 typedef struct AUDIO_APP_FATFS_SOURCE_T
@@ -81,6 +88,7 @@ typedef struct AUDIO_APP_FATFS_SOURCE_T
     const TCHAR *p_path;
     uint8_t      is_mounted;
     uint8_t      is_open;
+    uint32_t     sd_generation;
 } audio_app_fatfs_source_t;
 
 static const TCHAR audio_app_default_mp3_path[] =
@@ -101,6 +109,10 @@ static audio_pcm_block_t       audio_app_startup_silence_block;
 static audio_player_service_t  audio_app_player_service;
 static mp3_decoder_service_t   audio_app_decoder_service;
 static volatile mp3_decoder_service_status_t audio_app_decoder_last_status;
+/* Player retains reservation until decoder acknowledges file cleanup. */
+static uint8_t audio_app_decoder_inflight;
+static uint8_t audio_app_decoder_cancelled;
+static uint32_t audio_app_decoder_finished_session;
 
 static QueueHandle_t audio_app_free_queue;
 static QueueHandle_t audio_app_ready_queue;
@@ -173,6 +185,45 @@ static void audio_app_voice_request_release(void)
     taskEXIT_CRITICAL();
 }
 
+/* Gate the built-in SD source only; a debounced snapshot is not a hotplug lock. */
+static platform_err_t audio_app_sd_start_check(const char *p_stage)
+{
+    uint8_t present;
+    platform_err_t result = sd_card_presence_app_get(&present);
+
+    if(PLATFORM_ERR_OK != result)
+    {
+        plat_log_w("Audio SD %s rejected: card state unconfirmed, ret=%d",
+                   p_stage, (int)result);
+        return result;
+    }
+    if(0U == present)
+    {
+        plat_log_w("Audio SD %s rejected: no card", p_stage);
+        return PLATFORM_ERR_HW;
+    }
+    return PLATFORM_ERR_OK;
+}
+
+static uint8_t audio_app_sd_session_valid(uint32_t expected_generation)
+{
+    uint8_t present;
+    uint32_t generation;
+
+    return (uint8_t)((PLATFORM_ERR_OK == sd_card_presence_app_snapshot_get(
+                         &present, &generation)) &&
+                     (0U != present) && (generation == expected_generation));
+}
+
+static uint8_t audio_app_decoder_is_cancelled(void)
+{
+    uint8_t cancelled;
+    taskENTER_CRITICAL();
+    cancelled = audio_app_decoder_cancelled;
+    taskEXIT_CRITICAL();
+    return cancelled;
+}
+
 static audio_data_status_t audio_app_fatfs_open(void *p_context)
 {
     audio_app_fatfs_source_t *p_source =
@@ -185,6 +236,24 @@ static audio_data_status_t audio_app_fatfs_open(void *p_context)
         return AUDIO_DATA_STATUS_PARAM;
     }
 
+    if((PLATFORM_ERR_OK != audio_app_sd_start_check("open")) ||
+       (0U == audio_app_sd_session_valid(p_source->sd_generation)))
+    {
+        return AUDIO_DATA_STATUS_IO;
+    }
+    if(0U != p_source->is_mounted)
+    {
+        result = f_mount(NULL, _T("0:"), 0U);
+        if(FR_OK != result)
+        {
+            plat_log_e("Audio SD unmount retry ret=%u", (unsigned int)result);
+            return AUDIO_DATA_STATUS_IO;
+        }
+        p_source->is_mounted = 0U;
+    }
+    /* The SD slot is owned by this decoder. Always reinitialize after unmount;
+     * generated disk_initialize otherwise reuses a cached old card. */
+    sd_disk_invalidate();
     result = f_mount(&p_source->filesystem, _T("0:"), 1U);
     if(FR_OK != result)
     {
@@ -195,8 +264,13 @@ static audio_data_status_t audio_app_fatfs_open(void *p_context)
     result = f_open(&p_source->file, p_source->p_path, FA_READ);
     if(FR_OK != result)
     {
-        (void)f_mount(NULL, _T("0:"), 0U);
-        p_source->is_mounted = 0U;
+        FRESULT unmount_result = f_mount(NULL, _T("0:"), 0U);
+        p_source->is_mounted = (uint8_t)(FR_OK != unmount_result);
+        if(FR_OK != unmount_result)
+        {
+            plat_log_e("Audio SD unmount after open failure ret=%u",
+                       (unsigned int)unmount_result);
+        }
         return AUDIO_DATA_STATUS_IO;
     }
     p_source->is_open = 1U;
@@ -220,10 +294,19 @@ static audio_data_status_t audio_app_fatfs_read(void     *p_context,
         return AUDIO_DATA_STATUS_PARAM;
     }
 
+    *p_read_size = 0U;
+    if(0U == audio_app_sd_session_valid(p_source->sd_generation))
+    {
+        return AUDIO_DATA_STATUS_IO;
+    }
     result = f_read(&p_source->file,
                     p_buffer,
                     (UINT)buffer_size,
                     &read_size);
+    if(0U == audio_app_sd_session_valid(p_source->sd_generation))
+    {
+        return AUDIO_DATA_STATUS_IO;
+    }
     *p_read_size = (uint32_t)read_size;
     if(FR_OK != result)
     {
@@ -243,6 +326,10 @@ static audio_data_status_t audio_app_fatfs_seek(void    *p_context,
     {
         return AUDIO_DATA_STATUS_PARAM;
     }
+    if(0U == audio_app_sd_session_valid(p_source->sd_generation))
+    {
+        return AUDIO_DATA_STATUS_IO;
+    }
     return (FR_OK == f_lseek(&p_source->file, (FSIZE_t)offset)) ?
            AUDIO_DATA_STATUS_OK : AUDIO_DATA_STATUS_IO;
 }
@@ -258,14 +345,27 @@ static void audio_app_fatfs_close(void *p_context)
     }
     if(0U != p_source->is_open)
     {
-        (void)f_close(&p_source->file);
+        FRESULT close_result = f_close(&p_source->file);
+        if(FR_OK != close_result)
+        {
+            plat_log_w("Audio SD close ret=%u (media may be removed)",
+                       (unsigned int)close_result);
+        }
         p_source->is_open = 0U;
     }
     if(0U != p_source->is_mounted)
     {
-        (void)f_mount(NULL, _T("0:"), 0U);
-        p_source->is_mounted = 0U;
+        FRESULT unmount_result = f_mount(NULL, _T("0:"), 0U);
+        p_source->is_mounted = (uint8_t)(FR_OK != unmount_result);
+        if(FR_OK != unmount_result)
+        {
+            plat_log_e("Audio SD unmount ret=%u; retry before next open",
+                       (unsigned int)unmount_result);
+        }
     }
+    /* Even a failed read-only f_close cannot retain a usable old file object. */
+    memset(&p_source->file, 0, sizeof(p_source->file));
+    sd_disk_invalidate();
 }
 
 static void audio_app_output_callback(bsp_audio_output_event_t event)
@@ -373,12 +473,12 @@ static audio_pcm_block_t *audio_app_active_block_take(void)
 
 static void audio_app_decoder_stop_request(void)
 {
-    if(NULL != audio_app_decoder_task_handle)
+    taskENTER_CRITICAL();
+    if(0U != audio_app_decoder_inflight)
     {
-        (void)xTaskNotify(audio_app_decoder_task_handle,
-                          AUDIO_APP_DECODER_NOTIFY_STOP,
-                          eSetBits);
+        audio_app_decoder_cancelled = 1U;
     }
+    taskEXIT_CRITICAL();
 }
 
 static void audio_app_player_stop(uint8_t decoder_stop_required)
@@ -488,11 +588,34 @@ static void audio_app_mp3_request_handle(
 {
     audio_app_decode_command_t decode_command;
     platform_err_t ret;
+    uint8_t decoder_busy;
 
+
+
+    if((&audio_app_fatfs_source_ops == p_command->source.p_ops) &&
+       (PLATFORM_ERR_OK != audio_app_sd_start_check("start")))
+    {
+        return;
+    }
+    if((&audio_app_fatfs_source_ops == p_command->source.p_ops) &&
+       (0U == audio_app_sd_session_valid(p_command->sd_generation)))
+    {
+        plat_log_w("Audio SD start rejected: card changed after enqueue");
+        return;
+    }
     if(AUDIO_PLAYER_SERVICE_STATE_IDLE !=
        audio_player_service_state_get(&audio_app_player_service))
     {
         plat_log_w("Audio MP3 request rejected: player busy");
+        return;
+    }
+
+    taskENTER_CRITICAL();
+    decoder_busy = audio_app_decoder_inflight;
+    taskEXIT_CRITICAL();
+    if(0U != decoder_busy)
+    {
+        plat_log_w("Audio MP3 request rejected: decoder cleanup pending");
         return;
     }
 
@@ -516,11 +639,25 @@ static void audio_app_mp3_request_handle(
     {
         decode_command.source = p_command->source;
         decode_command.session_id = p_runtime->session_id;
+        decode_command.sd_generation = p_command->sd_generation;
+        taskENTER_CRITICAL();
+        audio_app_decoder_cancelled = 0U;
+        audio_app_decoder_inflight = 1U;
+        taskEXIT_CRITICAL();
         if(pdPASS != xQueueSend(audio_app_decode_command_queue,
                                 &decode_command,
                                 0U))
         {
             ret = PLATFORM_ERR_BUSY;
+            taskENTER_CRITICAL();
+            audio_app_decoder_inflight = 0U;
+            taskEXIT_CRITICAL();
+        }
+        else
+        {
+            p_runtime->sd_active = (uint8_t)(
+                &audio_app_fatfs_source_ops == p_command->source.p_ops);
+            p_runtime->sd_generation = p_command->sd_generation;
         }
     }
     plat_log_i("Audio MP3 prepare ret=%d, session=%lu",
@@ -733,6 +870,13 @@ static void audio_app_mp3_events_process(
     uint32_t                    notify_bits,
     audio_app_player_runtime_t *p_runtime)
 {
+    audio_player_service_state_t state =
+        audio_player_service_state_get(&audio_app_player_service);
+    if((AUDIO_PLAYER_SERVICE_STATE_PREPARING != state) &&
+       (AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344 != state))
+    {
+        return;
+    }
     if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_DECODE_ERROR))
     {
         plat_log_e("Audio MP3 decode failed, status=%u",
@@ -788,9 +932,78 @@ static void audio_app_mp3_events_process(
     }
 }
 
+static void audio_app_sd_removal_process(audio_app_player_runtime_t *p_runtime)
+{
+    audio_player_service_state_t state;
+
+    if(0U == p_runtime->sd_active)
+    {
+        return;
+    }
+    state = audio_player_service_state_get(&audio_app_player_service);
+    if((AUDIO_PLAYER_SERVICE_STATE_PREPARING != state) &&
+       (AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344 != state))
+    {
+        p_runtime->sd_active = 0U;
+        return;
+    }
+    if(0U == audio_app_sd_session_valid(p_runtime->sd_generation))
+    {
+        plat_log_w("Audio SD removed: stopping session=%lu",
+                   (unsigned long)p_runtime->session_id);
+        audio_app_player_stop(1U);
+        p_runtime->sd_active = 0U;
+        p_runtime->decoder_eof = 0U;
+    }
+}
+
+static void audio_app_decoder_completion_process(uint32_t notify_bits,
+                                                audio_app_player_runtime_t *p_runtime)
+{
+    uint32_t finished_session;
+    uint8_t cancelled;
+    audio_player_service_state_t state;
+
+    if(0U == (notify_bits & AUDIO_APP_PLAYER_NOTIFY_DECODE_DONE))
+    {
+        return;
+    }
+    taskENTER_CRITICAL();
+    finished_session = audio_app_decoder_finished_session;
+    cancelled = audio_app_decoder_cancelled;
+    if(finished_session == p_runtime->session_id)
+    {
+        audio_app_decoder_inflight = 0U;
+        audio_app_decoder_cancelled = 0U;
+    }
+    taskEXIT_CRITICAL();
+    if(finished_session != p_runtime->session_id)
+    {
+        return;
+    }
+    /* A read may have failed before the debounced removal was published. */
+    if((0U != cancelled) &&
+       ((AUDIO_PLAYER_SERVICE_STATE_PREPARING ==
+         audio_player_service_state_get(&audio_app_player_service)) ||
+        (AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344 ==
+         audio_player_service_state_get(&audio_app_player_service))))
+    {
+        audio_app_player_stop(0U);
+    }
+    state = audio_player_service_state_get(&audio_app_player_service);
+    if((AUDIO_PLAYER_SERVICE_STATE_PREPARING != state) &&
+       (AUDIO_PLAYER_SERVICE_STATE_PLAYING_CS4344 != state))
+    {
+        audio_app_ready_queue_flush();
+        p_runtime->sd_active = 0U;
+    }
+    plat_log_i("Audio MP3 decoder cleanup complete: session=%lu",
+               (unsigned long)finished_session);
+}
+
 static void audio_app_player_task(void *p_parameter)
 {
-    audio_app_player_runtime_t runtime = {0U, 0U};
+    audio_app_player_runtime_t runtime = {0};
     audio_player_service_state_t player_state;
     platform_err_t ret;
     uint32_t notify_bits;
@@ -815,7 +1028,8 @@ static void audio_app_player_task(void *p_parameter)
             &audio_app_player_service);
         wait_ticks = ((AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS ==
                        player_state) ||
-                      (0U != voice_presentation_app_is_active())) ?
+                      (0U != voice_presentation_app_is_active()) ||
+                      (0U != runtime.sd_active)) ?
                      pdMS_TO_TICKS(AUDIO_APP_VOICE_SYNTHESIS_POLL_MS) :
                      portMAX_DELAY;
         (void)xTaskNotifyWait(
@@ -824,6 +1038,10 @@ static void audio_app_player_task(void *p_parameter)
             &notify_bits,
             wait_ticks);
 
+        audio_app_sd_removal_process(&runtime);
+        /* Consume old-session events and cleanup before accepting new work. */
+        audio_app_mp3_events_process(notify_bits, &runtime);
+        audio_app_decoder_completion_process(notify_bits, &runtime);
         if(0U != (notify_bits & AUDIO_APP_PLAYER_NOTIFY_COMMAND))
         {
             audio_app_player_commands_process(&runtime);
@@ -838,7 +1056,6 @@ static void audio_app_player_task(void *p_parameter)
                            (int32_t)ret);
             }
         }
-        audio_app_mp3_events_process(notify_bits, &runtime);
     }
 }
 
@@ -847,66 +1064,73 @@ static void audio_app_decoder_task(void *p_parameter)
     audio_app_decode_command_t command;
     audio_pcm_block_t *p_block;
     mp3_decoder_service_status_t status;
-    uint32_t notify_value;
-    uint8_t stop_requested;
+    uint32_t completion_bits;
+    uint8_t stopped;
+    uint8_t uses_sd;
 
     (void)p_parameter;
     mp3_decoder_service_init(&audio_app_decoder_service);
-
     for(;;)
     {
-        (void)xQueueReceive(audio_app_decode_command_queue,
-                            &command,
-                            portMAX_DELAY);
-        status = mp3_decoder_service_start(&audio_app_decoder_service,
-                                           &command.source,
-                                           command.session_id);
-        plat_log_i("Audio MP3 decoder start status=%u",
-                   (unsigned int)status);
+        (void)xQueueReceive(audio_app_decode_command_queue, &command, portMAX_DELAY);
+        uses_sd = (uint8_t)(&audio_app_fatfs_source_ops == command.source.p_ops);
+        completion_bits = AUDIO_APP_PLAYER_NOTIFY_DECODE_DONE;
+        stopped = (uint8_t)((0U != audio_app_decoder_is_cancelled()) ||
+                  ((0U != uses_sd) &&
+                   (0U == audio_app_sd_session_valid(command.sd_generation))));
+        status = MP3_DECODER_SERVICE_STATUS_OK;
+        if(0U == stopped)
+        {
+            if((0U != uses_sd) && (NULL != command.source.p_context))
+            {
+                ((audio_app_fatfs_source_t *)command.source.p_context)->sd_generation =
+                    command.sd_generation;
+            }
+            status = mp3_decoder_service_start(&audio_app_decoder_service,
+                                               &command.source, command.session_id);
+            plat_log_i("Audio MP3 decoder start status=%u", (unsigned int)status);
+        }
         if(MP3_DECODER_SERVICE_STATUS_OK != status)
         {
-            audio_app_decoder_last_status = status;
-            (void)xTaskNotify(audio_app_player_task_handle,
-                              AUDIO_APP_PLAYER_NOTIFY_DECODE_ERROR,
-                              eSetBits);
-            continue;
+            completion_bits |= AUDIO_APP_PLAYER_NOTIFY_DECODE_ERROR;
         }
-
-        stop_requested = 0U;
-        while(0U == stop_requested)
+        while((0U == stopped) && (MP3_DECODER_SERVICE_STATUS_OK == status))
         {
-            notify_value = 0U;
-            if(pdPASS == xTaskNotifyWait(0U,
-                                         UINT32_MAX,
-                                         &notify_value,
-                                         0U))
+            stopped = (uint8_t)((0U != audio_app_decoder_is_cancelled()) ||
+                      ((0U != uses_sd) &&
+                       (0U == audio_app_sd_session_valid(command.sd_generation))));
+            if(0U != stopped)
             {
-                stop_requested = (uint8_t)(
-                    0U != (notify_value & AUDIO_APP_DECODER_NOTIFY_STOP));
-                if(0U != stop_requested)
-                {
-                    break;
-                }
+                break;
             }
-
-            if(pdPASS != xQueueReceive(
-                             audio_app_free_queue,
-                             &p_block,
-                             pdMS_TO_TICKS(AUDIO_APP_DECODER_WAIT_MS)))
+            if(pdPASS != xQueueReceive(audio_app_free_queue, &p_block,
+                                       pdMS_TO_TICKS(AUDIO_APP_DECODER_WAIT_MS)))
             {
                 continue;
             }
-
-            status = mp3_decoder_service_process(&audio_app_decoder_service,
-                                                  p_block);
+            stopped = (uint8_t)((0U != audio_app_decoder_is_cancelled()) ||
+                      ((0U != uses_sd) &&
+                       (0U == audio_app_sd_session_valid(command.sd_generation))));
+            if(0U != stopped)
+            {
+                audio_app_block_return(p_block);
+                break;
+            }
+            status = mp3_decoder_service_process(&audio_app_decoder_service, p_block);
+            stopped = (uint8_t)((0U != audio_app_decoder_is_cancelled()) ||
+                      ((0U != uses_sd) &&
+                       (0U == audio_app_sd_session_valid(command.sd_generation))));
+            if(0U != stopped)
+            {
+                audio_app_block_return(p_block);
+                break;
+            }
             if(MP3_DECODER_SERVICE_STATUS_PCM_READY == status)
             {
-                (void)xQueueSend(audio_app_ready_queue,
-                                 &p_block,
-                                 portMAX_DELAY);
+                (void)xQueueSend(audio_app_ready_queue, &p_block, portMAX_DELAY);
                 (void)xTaskNotify(audio_app_player_task_handle,
-                                  AUDIO_APP_PLAYER_NOTIFY_PCM_READY,
-                                  eSetBits);
+                                  AUDIO_APP_PLAYER_NOTIFY_PCM_READY, eSetBits);
+                status = MP3_DECODER_SERVICE_STATUS_OK;
             }
             else
             {
@@ -914,26 +1138,27 @@ static void audio_app_decoder_task(void *p_parameter)
                 if(MP3_DECODER_SERVICE_STATUS_AGAIN == status)
                 {
                     vTaskDelay(1U);
+                    status = MP3_DECODER_SERVICE_STATUS_OK;
                 }
                 else if(MP3_DECODER_SERVICE_STATUS_EOF == status)
                 {
-                    (void)xTaskNotify(audio_app_player_task_handle,
-                                      AUDIO_APP_PLAYER_NOTIFY_DECODE_EOF,
-                                      eSetBits);
+                    completion_bits |= AUDIO_APP_PLAYER_NOTIFY_DECODE_EOF;
                     break;
                 }
                 else
                 {
-                    audio_app_decoder_last_status = status;
-                    (void)xTaskNotify(audio_app_player_task_handle,
-                                      AUDIO_APP_PLAYER_NOTIFY_DECODE_ERROR,
-                                      eSetBits);
+                    completion_bits |= AUDIO_APP_PLAYER_NOTIFY_DECODE_ERROR;
                     break;
                 }
             }
         }
-
+        /* Only the decoder closes its file, before publishing completion. */
         mp3_decoder_service_stop(&audio_app_decoder_service);
+        taskENTER_CRITICAL();
+        audio_app_decoder_last_status = status;
+        audio_app_decoder_finished_session = command.session_id;
+        taskEXIT_CRITICAL();
+        (void)xTaskNotify(audio_app_player_task_handle, completion_bits, eSetBits);
         plat_log_i("Audio decoder stack min free=%lu words",
                    (unsigned long)uxTaskGetStackHighWaterMark(NULL));
     }
@@ -1011,6 +1236,9 @@ platform_err_t audio_playback_app_play(
     const audio_data_source_t *p_source)
 {
     audio_app_player_command_t command;
+    platform_err_t result;
+    uint32_t sd_generation = 0U;
+    uint8_t present;
 
     if((NULL == p_source) || (NULL == p_source->p_ops) ||
        (NULL == audio_app_player_command_queue) ||
@@ -1018,9 +1246,27 @@ platform_err_t audio_playback_app_play(
     {
         return PLATFORM_ERR_PARAM;
     }
+    if(&audio_app_fatfs_source_ops == p_source->p_ops)
+    {
+        result = audio_app_sd_start_check("request");
+        if(PLATFORM_ERR_OK != result)
+        {
+            return result;
+        }
+        result = sd_card_presence_app_snapshot_get(&present, &sd_generation);
+        if(PLATFORM_ERR_OK != result)
+        {
+            return result;
+        }
+        if(0U == present)
+        {
+            return PLATFORM_ERR_HW;
+        }
+    }
     memset(&command, 0, sizeof(command));
     command.type = AUDIO_APP_PLAYER_COMMAND_PLAY_MP3;
     command.source = *p_source;
+    command.sd_generation = sd_generation;
     if(pdPASS != xQueueSend(audio_app_player_command_queue, &command, 0U))
     {
         return PLATFORM_ERR_BUSY;

@@ -57,18 +57,8 @@ void wk_gpio_config(void)
 
   gpio_init_struct.gpio_mode = GPIO_MODE_INPUT;
   gpio_init_struct.gpio_pins = SDIO2_TFCD_PC13_PIN;
-  gpio_init_struct.gpio_pull = GPIO_PULL_NONE;
+  gpio_init_struct.gpio_pull = GPIO_PULL_UP;
   gpio_init(SDIO2_TFCD_PC13_GPIO_PORT, &gpio_init_struct);
-
-  gpio_init_struct.gpio_mode = GPIO_MODE_INPUT;
-  gpio_init_struct.gpio_pins = PIR_IN_PC10_PIN;
-  gpio_init_struct.gpio_pull = GPIO_PULL_UP;
-  gpio_init(PIR_IN_PC10_GPIO_PORT, &gpio_init_struct);
-
-  gpio_init_struct.gpio_mode = GPIO_MODE_INPUT;
-  gpio_init_struct.gpio_pins = ALARM_IN_PD7_PIN;
-  gpio_init_struct.gpio_pull = GPIO_PULL_UP;
-  gpio_init(ALARM_IN_PD7_GPIO_PORT, &gpio_init_struct);
 
   gpio_init_struct.gpio_mode = GPIO_MODE_INPUT;
   gpio_init_struct.gpio_pins = TTS_R_B_PB8_PIN;
@@ -78,13 +68,13 @@ void wk_gpio_config(void)
   /* gpio output config */
   gpio_bits_reset(GPIOE, TPA_SDZ_PE5_PIN | E27_RELOAD_PE7_PIN | E27_RESET_PE8_PIN | DEBUG_SCOPE_PE9_PIN);
   gpio_bits_set(GPIOE, TPA_MUTE_PE6_PIN | LED1_REMOTE_PE12_PIN | LED2_UPDATA_PE13_PIN | LED3_BRCAT_PE14_PIN | LED4_RUN_PE15_PIN);
-  gpio_bits_reset(GPIOA, PIR_POWER_PA5_PIN | RS485_RXEN_PA12_PIN);
+  gpio_bits_set(GPIOA, PIR_POWER_PA5_PIN | E27_POWEREN_PA11_PIN | SPI3GT_CS_PA15_PIN);
   gpio_bits_reset(GPIOD, HUB_R1_PD8_PIN | HUB_G1_PD9_PIN | HUB_B1_PD10_PIN | HUB_R2_PD11_PIN | HUB_G2_PD12_PIN | 
                   HUB_B2_PD13_PIN | HUB_SCK_PD15_PIN | HUB_A_PD0_PIN | HUB_B_PD1_PIN | HUB_C_PD2_PIN | 
                   HUB_D_PD3_PIN | HUB_E_PD4_PIN | HUB_LAT_PD5_PIN);
   gpio_bits_reset(GPIOC, HUB_OE_PC6_PIN | LED_OUT_B_PC7_PIN | LED_OUT_R_PC8_PIN);
   gpio_bits_set(LED_POWER_CS_PC9_GPIO_PORT, LED_POWER_CS_PC9_PIN);
-  gpio_bits_set(GPIOA, E27_POWEREN_PA11_PIN | SPI3GT_CS_PA15_PIN);
+  gpio_bits_reset(RS485_RXEN_PA12_GPIO_PORT, RS485_RXEN_PA12_PIN);
   gpio_bits_set(HUB_OE245_PD6_GPIO_PORT, HUB_OE245_PD6_PIN);
   gpio_bits_set(GPIOB, ALARM_OUT_PB7_PIN | TTS_RST_PB9_PIN);
 
@@ -152,6 +142,9 @@ void wk_gpio_config(void)
   gpio_init(GPIOD, &gpio_init_struct);
 
   /* add user code begin gpio_config 2 */
+  /* PC9 is active-low and supplies both display and USB; keep it on.
+   * Display start/stop/error paths control OE only. */
+  gpio_bits_reset(LED_POWER_CS_PC9_GPIO_PORT, LED_POWER_CS_PC9_PIN);
 
   /* add user code end gpio_config 2 */
 }

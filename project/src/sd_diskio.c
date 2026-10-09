@@ -30,6 +30,9 @@
 
 /* private includes ----------------------------------------------------------*/
 /* add user code begin private includes */
+#include "bsp_sd_card.h"
+#include "sd_disk_state.h"
+#include <stddef.h>
 
 /* add user code end private includes */
 
@@ -75,6 +78,28 @@ disk_driver_type sd_disk = {
 };
 
 /* add user code begin 0 */
+/* Read raw CD at the disk boundary: no new transaction after removal.
+ * This driver and the SD FatFs slot are serialized by their file owner. */
+static uint8_t sd_disk_initialized;
+
+void sd_disk_invalidate(void)
+{
+  sd_disk_initialized = 0U;
+  if(fatfs_disk.disk[0] == &sd_disk)
+    fatfs_disk.is_initialized[0] = 0U;
+}
+
+static DSTATUS sd_disk_presence_status(void)
+{
+  uint8_t present;
+  platform_err_t result = bsp_sd_card_is_present(&present);
+  if((PLATFORM_ERR_OK != result) || (0U == present))
+  {
+    sd_disk_invalidate();
+    return (PLATFORM_ERR_OK == result) ? (STA_NOINIT | STA_NODISK) : STA_NOINIT;
+  }
+  return (0U != sd_disk_initialized) ? 0U : STA_NOINIT;
+}
 
 /* add user code end 0 */
 
@@ -86,12 +111,26 @@ static DSTATUS sd_disk_initialize (BYTE lun)
   DSTATUS stat = STA_NOINIT;
 
 /* add user code begin sd_disk_initialize 0 */
+  if(lun != 0U) return STA_NOINIT;
+  {
+    uint8_t present;
+    if(PLATFORM_ERR_OK != bsp_sd_card_is_present(&present)) return STA_NOINIT;
+    if(0U == present)
+    {
+      sd_disk_invalidate();
+      return STA_NOINIT | STA_NODISK;
+    }
+  }
+  stat = sd_disk_presence_status();
+  if(0U != (stat & STA_NODISK)) return stat;
+  sd_disk_initialized = 0U;
 
 /* add user code end sd_disk_initialize 0 */
 
   if(sd_init() == SD_OK)
 	{
 /* add user code begin sd_disk_initialize 1 */
+    sd_disk_initialized = 1U;
 
 /* add user code end sd_disk_initialize 1 */
 
@@ -99,6 +138,7 @@ static DSTATUS sd_disk_initialize (BYTE lun)
 	}
 
 /* add user code begin sd_disk_initialize 2 */
+  stat = sd_disk_presence_status();
 
 /* add user code end sd_disk_initialize 2 */
 
@@ -117,6 +157,7 @@ static DSTATUS sd_disk_status (BYTE lun)
   DSTATUS stat = 0;
 
 /* add user code begin sd_disk_status 1 */
+  stat = (lun == 0U) ? sd_disk_presence_status() : STA_NOINIT;
 
 /* add user code end sd_disk_status 1 */
 
@@ -136,6 +177,10 @@ static DRESULT sd_disk_read (
   DRESULT res = RES_OK;
 
 /* add user code begin sd_disk_read 0 */
+  if((lun != 0U) || (NULL == buff) || (0U == count)) return RES_PARERR;
+  if(0U != sd_disk_presence_status()) return RES_NOTRDY;
+  if(((uint64_t)sector + count) > sd_card_info.card_capacity / BLOCK_SIZE)
+    return RES_PARERR;
 
 /* add user code end sd_disk_read 0 */
 	
@@ -163,6 +208,7 @@ static DRESULT sd_disk_read (
 	}
 
 /* add user code begin sd_disk_read 3 */
+  if(0U != sd_disk_presence_status()) res = RES_NOTRDY;
 
 /* add user code end sd_disk_read 3 */
 
@@ -184,6 +230,10 @@ static DRESULT sd_disk_write (
   DRESULT res = RES_OK;
 
 /* add user code begin sd_disk_write 0 */
+  if((lun != 0U) || (NULL == buff) || (0U == count)) return RES_PARERR;
+  if(0U != sd_disk_presence_status()) return RES_NOTRDY;
+  if(((uint64_t)sector + count) > sd_card_info.card_capacity / BLOCK_SIZE)
+    return RES_PARERR;
 
 /* add user code end sd_disk_write 0 */
 
@@ -211,6 +261,7 @@ static DRESULT sd_disk_write (
 	}
 
 /* add user code begin sd_disk_write 3 */
+  if(0U != sd_disk_presence_status()) res = RES_NOTRDY;
 
 /* add user code end sd_disk_write 3 */
 
@@ -227,6 +278,8 @@ static DRESULT sd_disk_ioctl (
 )
 {
 /* add user code begin sd_disk_ioctl 0 */
+  if((lun != 0U) || ((cmd != CTRL_SYNC) && (NULL == buff))) return RES_PARERR;
+  if(0U != sd_disk_presence_status()) return RES_NOTRDY;
 
 /* add user code end sd_disk_ioctl 0 */
 

@@ -63,7 +63,8 @@ extern "C"
 #define BOARD_GPIO_KEY2             ((plat_gpio_id_t)34U)
 #define BOARD_GPIO_KEY3             ((plat_gpio_id_t)35U)
 #define BOARD_GPIO_KEY4             ((plat_gpio_id_t)36U)
-#define BOARD_GPIO_RESOURCE_NUM     ((plat_gpio_id_t)39U)
+#define BOARD_GPIO_TF_CD            ((plat_gpio_id_t)39U)
+#define BOARD_GPIO_RESOURCE_NUM     ((plat_gpio_id_t)40U)
 
 #define BOARD_UART_REMOTE_4G        ((plat_uart_id_t)0U)
 #define BOARD_UART_RS485            ((plat_uart_id_t)1U)

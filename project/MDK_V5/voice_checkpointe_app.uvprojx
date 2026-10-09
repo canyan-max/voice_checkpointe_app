@@ -454,6 +454,11 @@
               <FilePath>..\..\libraries\drivers\src\at32f435_437_misc.c</FilePath>
             </File>
             <File>
+              <FileName>at32f435_437_scfg.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\libraries\drivers\src\at32f435_437_scfg.c</FilePath>
+            </File>
+            <File>
               <FileName>at32f435_437_usb.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\libraries\drivers\src\at32f435_437_usb.c</FilePath>
@@ -682,6 +687,11 @@
               <FileType>1</FileType>
               <FilePath>../src/usbh_msc_diskio.c</FilePath>
             </File>
+            <File>
+              <FileName>wk_exint.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\src\wk_exint.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -721,6 +731,16 @@
               <FileName>led_indicator_app.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\01_App\led_indicator_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>sd_card_presence_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\01_App\sd_card_presence_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>sd_card_presence_app.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\01_App\sd_card_presence_app.h</FilePath>
             </File>
             <File>
               <FileName>led_indicator_app.h</FileName>
@@ -786,6 +806,16 @@
               <FileName>audio_volume_service.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\02_Service\audio_volume_service.c</FilePath>
+            </File>
+            <File>
+              <FileName>sd_card_presence_service.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\02_Service\sd_card_presence_service.c</FilePath>
+            </File>
+            <File>
+              <FileName>sd_card_presence_service.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\02_Service\sd_card_presence_service.h</FilePath>
             </File>
             <File>
               <FileName>audio_volume_service.h</FileName>
@@ -881,6 +911,16 @@
               <FileName>bsp_led.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\03_Platform\bsp\bsp_led.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_sd_card.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_sd_card.c</FilePath>
+            </File>
+            <File>
+              <FileName>bsp_sd_card.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\03_Platform\bsp\bsp_sd_card.h</FilePath>
             </File>
             <File>
               <FileName>bsp_led.h</FileName>
