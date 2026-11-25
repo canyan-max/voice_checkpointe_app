@@ -18,6 +18,7 @@
 #include "audio_player_service.h"
 #include "mp3_decoder_service.h"
 #include "plat_log.h"
+#include "plat_sys.h"
 #include "voice_presentation_app.h"
 #include "sd_card_presence_app.h"
 #include "sd_disk_state.h"
@@ -62,6 +63,8 @@ typedef struct AUDIO_APP_PLAYER_COMMAND_T
     audio_data_source_t             source;
     bsp_voice_synthesis_encoding_t  voice_encoding;
     uint16_t                        voice_text_size;
+    uint16_t                        caption_size;
+    uint8_t                         voice_repeat_count;
     uint8_t                         emergency_active;
     uint32_t                        sd_generation;
 } audio_app_player_command_t;
@@ -123,6 +126,8 @@ static TaskHandle_t  audio_app_decoder_task_handle;
 static volatile uint8_t audio_app_ignore_output_events;
 static volatile uint8_t audio_app_voice_request_pending;
 static uint8_t audio_app_voice_text[AUDIO_PLAYBACK_APP_VOICE_TEXT_MAX_BYTES];
+/* One caption snapshot until the player passes it to the display buffer. */
+static uint8_t g_audio_app_caption[AUDIO_PLAYBACK_APP_CAPTION_MAX_BYTES];
 
 static StaticQueue_t audio_app_free_queue_control;
 static StaticQueue_t audio_app_ready_queue_control;
@@ -685,27 +690,31 @@ static void audio_app_voice_synthesis_request_handle(
     }
 
     ret = audio_player_service_voice_synthesis_start(
-        &audio_app_player_service,
-        p_command->voice_encoding,
-        audio_app_voice_text,
-        p_command->voice_text_size,
+        &audio_app_player_service, p_command->voice_encoding,
+        audio_app_voice_text, p_command->voice_text_size,
+        p_command->voice_repeat_count, plat_tick_get_ms(),
         AUDIO_APP_VOICE_SYNTHESIS_SEND_TIMEOUT_MS);
-    if(PLATFORM_ERR_OK == ret)
-    {
+    if (PLATFORM_ERR_OK == ret) {
         platform_err_t presentation_ret;
 
-        plat_log_i("Voice synthesis playback started");
-        presentation_ret = voice_presentation_app_start(
-                               audio_app_voice_text,
-                               p_command->voice_text_size);
+        plat_log_i("Voice synthesis playback started, rounds=%u",
+                   (unsigned int)((0U == p_command->voice_repeat_count)
+                                      ? 1U
+                                      : p_command->voice_repeat_count));
+        if (0U == p_command->caption_size) {
+            presentation_ret = voice_presentation_app_start(
+                audio_app_voice_text, p_command->voice_text_size);
+        } else {
+            presentation_ret = voice_presentation_app_start(g_audio_app_caption,
+                                                            p_command
+                                                                ->caption_size);
+        }
         if(PLATFORM_ERR_OK != presentation_ret)
         {
             plat_log_e("Voice presentation start failed, ret=%d",
                        (int32_t)presentation_ret);
         }
-    }
-    else
-    {
+    } else {
         plat_log_e("Voice synthesis start failed, ret=%d", (int32_t)ret);
         audio_app_voice_request_release();
     }
@@ -832,10 +841,8 @@ static void audio_app_voice_synthesis_process(void)
     }
 
     ret = audio_player_service_voice_synthesis_process(
-        &audio_app_player_service,
-        &event);
-    if(PLATFORM_ERR_OK != ret)
-    {
+        &audio_app_player_service, plat_tick_get_ms(), &event);
+    if (PLATFORM_ERR_OK != ret) {
         plat_log_e("Voice synthesis process failed, ret=%d", (int32_t)ret);
         audio_app_voice_presentation_abort();
         audio_app_voice_request_release();
@@ -1282,48 +1289,65 @@ platform_err_t audio_playback_app_play_default(void)
     return audio_playback_app_play(&audio_app_default_source);
 }
 
-platform_err_t audio_playback_app_voice_speak(
-    bsp_voice_synthesis_encoding_t encoding,
-    const uint8_t                 *p_text,
-    uint16_t                       text_size)
-{
+platform_err_t audio_playback_app_voice_request(
+    const audio_playback_voice_request_t *p_request) {
     audio_app_player_command_t command;
 
-    if((NULL == p_text) || (0U == text_size) ||
-       (text_size > AUDIO_PLAYBACK_APP_VOICE_TEXT_MAX_BYTES) ||
-       (NULL == audio_app_player_command_queue) ||
-       (NULL == audio_app_player_task_handle))
-    {
+    if ((NULL == p_request) || (NULL == p_request->p_text) ||
+        (0U == p_request->text_size) ||
+        (p_request->text_size > AUDIO_PLAYBACK_APP_VOICE_TEXT_MAX_BYTES) ||
+        (p_request->caption_size > AUDIO_PLAYBACK_APP_CAPTION_MAX_BYTES) ||
+        ((0U != p_request->caption_size) &&
+         (NULL == p_request->p_caption_gbk)) ||
+        (p_request->repeat_count > AUDIO_PLAYER_VOICE_REPEAT_MAX) ||
+        (NULL == audio_app_player_command_queue) ||
+        (NULL == audio_app_player_task_handle)) {
         return PLATFORM_ERR_PARAM;
     }
 
     taskENTER_CRITICAL();
-    if(0U != audio_app_voice_request_pending)
-    {
+    if (0U != audio_app_voice_request_pending) {
         taskEXIT_CRITICAL();
         return PLATFORM_ERR_BUSY;
     }
     audio_app_voice_request_pending = 1U;
     taskEXIT_CRITICAL();
 
-    memcpy(audio_app_voice_text, p_text, text_size);
+    memcpy(audio_app_voice_text, p_request->p_text, p_request->text_size);
+    if (0U != p_request->caption_size) {
+        memcpy(g_audio_app_caption, p_request->p_caption_gbk,
+               p_request->caption_size);
+    }
     memset(&command, 0, sizeof(command));
-    command.type = AUDIO_APP_PLAYER_COMMAND_PLAY_VOICE_SYNTHESIS;
-    command.voice_encoding = encoding;
-    command.voice_text_size = text_size;
-    if(pdPASS != xQueueSend(audio_app_player_command_queue, &command, 0U))
-    {
+    command.type               = AUDIO_APP_PLAYER_COMMAND_PLAY_VOICE_SYNTHESIS;
+    command.voice_encoding     = p_request->encoding;
+    command.voice_text_size    = p_request->text_size;
+    command.caption_size       = p_request->caption_size;
+    command.voice_repeat_count = p_request->repeat_count;
+    if (pdPASS != xQueueSend(audio_app_player_command_queue, &command, 0U)) {
         audio_app_voice_request_release();
         return PLATFORM_ERR_BUSY;
     }
     (void)xTaskNotify(audio_app_player_task_handle,
-                      AUDIO_APP_PLAYER_NOTIFY_COMMAND,
-                      eSetBits);
+                      AUDIO_APP_PLAYER_NOTIFY_COMMAND, eSetBits);
     return PLATFORM_ERR_OK;
 }
 
-platform_err_t audio_playback_app_stop(void)
-{
+platform_err_t
+audio_playback_app_voice_speak(bsp_voice_synthesis_encoding_t encoding,
+                               const uint8_t                 *p_text,
+                               uint16_t                       text_size) {
+    const audio_playback_voice_request_t request = {
+        .encoding     = encoding,
+        .p_text       = p_text,
+        .text_size    = text_size,
+        .repeat_count = 1U,
+    };
+
+    return audio_playback_app_voice_request(&request);
+}
+
+platform_err_t audio_playback_app_stop(void) {
     audio_app_player_command_t command;
 
     if((NULL == audio_app_player_command_queue) ||

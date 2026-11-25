@@ -23,6 +23,7 @@ extern "C"
 #define AUDIO_PLAYER_DMA_HALF_SAMPLES   \
     (AUDIO_PLAYER_DMA_HALF_FRAMES * AUDIO_PCM_CHANNEL_COUNT)
 #define AUDIO_PLAYER_DMA_SAMPLE_COUNT   (AUDIO_PLAYER_DMA_HALF_SAMPLES * 2U)
+#define AUDIO_PLAYER_VOICE_REPEAT_MAX   (16U)
 
 typedef enum AUDIO_PLAYER_SERVICE_STATE_T
 {
@@ -34,13 +35,24 @@ typedef enum AUDIO_PLAYER_SERVICE_STATE_T
     AUDIO_PLAYER_SERVICE_STATE_ERROR
 } audio_player_service_state_t;
 
-typedef struct AUDIO_PLAYER_SERVICE_T
-{
+typedef struct AUDIO_PLAYER_VOICE_SESSION_T {
+    const uint8_t                 *p_text;
+    bsp_voice_synthesis_encoding_t encoding;
+    uint32_t                       phase_started_ms;
+    uint32_t                       send_timeout_ms;
+    uint16_t                       text_size;
+    uint8_t                        remaining;
+    uint8_t                        waiting_next;
+    uint8_t                        round_confirmed;
+} audio_player_voice_session_t;
+
+typedef struct AUDIO_PLAYER_SERVICE_T {
     audio_player_service_state_t state;
     uint32_t session_id;
     uint32_t sample_rate_hz;
     uint32_t underrun_count;
     uint8_t  half_has_audio[2];
+    audio_player_voice_session_t voice;
     uint16_t dma_samples[AUDIO_PLAYER_DMA_SAMPLE_COUNT];
 } audio_player_service_t;
 
@@ -60,16 +72,21 @@ platform_err_t audio_player_service_start(
 platform_err_t audio_player_service_unmute(
     audio_player_service_t *p_service);
 
+/* Text remains owned by the caller until the whole request ends. */
 platform_err_t audio_player_service_voice_synthesis_start(
-    audio_player_service_t          *p_service,
-    bsp_voice_synthesis_encoding_t   encoding,
-    const uint8_t                   *p_text,
-    uint16_t                         text_size,
-    uint32_t                         timeout_ms);
-
-platform_err_t audio_player_service_voice_synthesis_process(
     audio_player_service_t        *p_service,
-    bsp_voice_synthesis_event_t   *p_event);
+    bsp_voice_synthesis_encoding_t encoding,
+    const uint8_t                 *p_text,
+    uint16_t                       text_size,
+    uint8_t                        repeat_count,
+    uint32_t                       now_ms,
+    uint32_t                       timeout_ms);
+
+/* Forward IDLE to the caller only after the last round ends. */
+platform_err_t audio_player_service_voice_synthesis_process(
+    audio_player_service_t      *p_service,
+    uint32_t                     now_ms,
+    bsp_voice_synthesis_event_t *p_event);
 
 platform_err_t audio_player_service_refill(
     audio_player_service_t  *p_service,

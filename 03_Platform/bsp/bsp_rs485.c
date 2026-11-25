@@ -5,9 +5,7 @@
 #include "plat_gpio.h"
 #include "plat_uart.h"
 
-static volatile uint32_t rs485_idle_sequence;
 static volatile uint32_t rs485_error_sequence;
-static uint32_t rs485_idle_handled;
 static uint32_t rs485_error_handled;
 static uint8_t rs485_initialized;
 
@@ -19,10 +17,6 @@ static void bsp_rs485_rx_callback(plat_uart_id_t id,
     if(BOARD_UART_RS485 != id)
     {
         return;
-    }
-    if(0U != ((uint32_t)event & (uint32_t)PLAT_UART_RX_EVENT_IDLE))
-    {
-        rs485_idle_sequence++;
     }
     if(0U != ((uint32_t)event &
               ((uint32_t)PLAT_UART_RX_EVENT_OVERFLOW |
@@ -57,7 +51,6 @@ platform_err_t bsp_rs485_init(void)
         (void)plat_uart_set_rx_callback(BOARD_UART_RS485, NULL);
         return ret;
     }
-    rs485_idle_handled = rs485_idle_sequence;
     rs485_error_handled = rs485_error_sequence;
     rs485_initialized = 1U;
     return PLATFORM_ERR_OK;
@@ -67,10 +60,6 @@ platform_err_t bsp_rs485_poll(uint8_t *p_data,
                               uint16_t capacity,
                               uint16_t *p_size)
 {
-    platform_err_t ret;
-    uint16_t available;
-    uint16_t discarded;
-
     if((NULL == p_data) || (0U == capacity) || (NULL == p_size))
     {
         return PLATFORM_ERR_PARAM;
@@ -80,44 +69,30 @@ platform_err_t bsp_rs485_poll(uint8_t *p_data,
     {
         return PLATFORM_ERR_HW;
     }
-    if((rs485_idle_handled == rs485_idle_sequence) &&
-       (rs485_error_handled == rs485_error_sequence))
-    {
-        return PLATFORM_ERR_OK;
-    }
-    rs485_idle_handled = rs485_idle_sequence;
-    ret = plat_uart_get_rx_size(BOARD_UART_RS485, &available);
-    if(PLATFORM_ERR_OK != ret)
-    {
-        return ret;
-    }
-    if((rs485_error_handled != rs485_error_sequence) ||
-       (available > capacity))
-    {
-        rs485_error_handled = rs485_error_sequence;
-        while(available > 0U)
-        {
+    uint32_t error_sequence = rs485_error_sequence;
+    if (rs485_error_handled != error_sequence) {
+        uint16_t available = 0U;
+        platform_err_t ret = plat_uart_get_rx_size(BOARD_UART_RS485, &available);
+        if (PLATFORM_ERR_OK != ret) {
+            return ret;
+        }
+        while (0U < available) {
             uint16_t chunk = (available > capacity) ? capacity : available;
+            uint16_t discarded = 0U;
             ret = plat_uart_read(BOARD_UART_RS485,
                                  p_data,
                                  chunk,
                                  &discarded);
-            if((PLATFORM_ERR_OK != ret) || (0U == discarded))
-            {
+            if ((PLATFORM_ERR_OK != ret) || (0U == discarded)) {
                 return PLATFORM_ERR_HW;
             }
             available = (uint16_t)(available - discarded);
         }
+        rs485_error_handled = error_sequence;
         return PLATFORM_ERR_HW;
     }
-    if(0U == available)
-    {
-        return PLATFORM_ERR_OK;
-    }
-    ret = plat_uart_read(BOARD_UART_RS485, p_data, available, p_size);
-    if(rs485_error_handled != rs485_error_sequence)
-    {
-        rs485_error_handled = rs485_error_sequence;
+    platform_err_t ret = plat_uart_read(BOARD_UART_RS485, p_data, capacity, p_size);
+    if (error_sequence != rs485_error_sequence) {
         *p_size = 0U;
         return PLATFORM_ERR_HW;
     }

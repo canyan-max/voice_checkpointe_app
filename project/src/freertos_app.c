@@ -22,6 +22,9 @@
 #include "voice_presentation_app.h"
 #include "remote_modem_app.h"
 #include "sd_card_presence_app.h"
+#include "bsp_rs485.h"
+#include "comm_app.h"
+#include "checkpoint_config.h"
 #include "fatfs_disk.h"
 #include <string.h>
 #include "usb_core.h"
@@ -54,6 +57,9 @@
 /* private variables ---------------------------------------------------------*/
 /* add user code begin private variables */
 
+/* Bound to the COMM task at startup; callbacks are its only runtime callers. */
+static checkpoint_config_t g_checkpoint_config;
+
 /* add user code end private variables */
 
 /* private function prototypes --------------------------------------------*/
@@ -63,6 +69,58 @@
 
 /* private user code ---------------------------------------------------------*/
 /* add user code begin 0 */
+
+static platform_err_t checkpoint_comm_voice_set(void *p_context,
+                                                uint8_t item_number,
+                                                const uint8_t *p_text,
+                                                uint16_t text_size)
+{
+  return checkpoint_config_voice_set(p_context, item_number, p_text, text_size);
+}
+
+static platform_err_t checkpoint_comm_voice_repeat_set(void *p_context,
+                                                       uint8_t repeat_count)
+{
+  return checkpoint_config_voice_repeat_set(p_context, repeat_count);
+}
+
+static platform_err_t checkpoint_comm_display_set(void *p_context,
+                                                  uint8_t item_number,
+                                                  const uint8_t *p_text,
+                                                  uint16_t text_size)
+{
+  return checkpoint_config_display_set(p_context, item_number, p_text,
+                                       text_size);
+}
+
+static platform_err_t checkpoint_comm_play(void *p_context, uint8_t item_number)
+{
+  const checkpoint_config_t *p_config = p_context;
+  const checkpoint_item_config_t *p_item =
+      checkpoint_config_item_get(p_config, item_number);
+
+  if((NULL == p_item) || (0U == p_item->voice_text_size))
+  {
+    return PLATFORM_ERR_PARAM;
+  }
+
+  const audio_playback_voice_request_t request =
+  {
+    .encoding = BSP_VOICE_SYNTHESIS_ENCODING_GBK,
+    .p_text = p_item->voice_text,
+    .text_size = p_item->voice_text_size,
+    .repeat_count = p_config->voice_repeat,
+    .p_caption_gbk = p_item->display_text,
+    .caption_size = p_item->display_text_size
+  };
+  return audio_playback_app_voice_request(&request);
+}
+
+static platform_err_t checkpoint_comm_stop(void *p_context)
+{
+  (void)p_context;
+  return audio_playback_app_stop();
+}
 
 /* Temporary EXINT board test: ISR owns counters, this task owns logging.
  * No debounce; multiple edges can be reported together by the task. */
@@ -539,29 +597,7 @@ void start_or_test_f(void *pvParameters)
   };
   static const uint8_t voice_synthesis_test_text[] =
   {
-    0xC9U, 0xADU, 0xC1U, 0xD6U, 0xB7U, 0xC0U, 0xBBU, 0xF0U,
-    0xC8U, 0xCBU, 0xC8U, 0xCBU, 0xD3U, 0xD0U, 0xD4U, 0xF0U,
-    0xA3U, 0xACU, 0xB1U, 0xA3U, 0xBBU, 0xA4U, 0xC9U, 0xADU,
-    0xC1U, 0xD6U, 0xBEU, 0xCDU, 0xCAU, 0xC7U, 0xB1U, 0xA3U,
-    0xBBU, 0xA4U, 0xCEU, 0xD2U, 0xC3U, 0xC7U, 0xB5U, 0xC4U,
-    0xBCU, 0xD2U, 0xD4U, 0xB0U, 0xA1U, 0xA3U, 0xBDU, 0xF8U,
-    0xC8U, 0xEBU, 0xC1U, 0xD6U, 0xC7U, 0xF8U, 0xD1U, 0xCFU,
-    0xBDU, 0xFBU, 0xD0U, 0xAFU, 0xB4U, 0xF8U, 0xBBU, 0xF0U,
-    0xD6U, 0xD6U, 0xA3U, 0xACU, 0xD1U, 0xCFU, 0xBDU, 0xFBU,
-    0xD2U, 0xB0U, 0xCDU, 0xE2U, 0xD3U, 0xC3U, 0xBBU, 0xF0U,
-    0xA3U, 0xACU, 0xB7U, 0xA2U, 0xCFU, 0xD6U, 0xBBU, 0xF0U,
-    0xC7U, 0xE9U, 0xC7U, 0xEBU, 0xC1U, 0xA2U, 0xBCU, 0xB4U,
-    0xB1U, 0xA8U, 0xB8U, 0xE6U, 0xA3U, 0xACU, 0xCCU, 0xFDU,
-    0xB4U, 0xD3U, 0xCFU, 0xD6U, 0xB3U, 0xA1U, 0xC8U, 0xCBU,
-    0xD4U, 0xB1U, 0xD6U, 0xB8U, 0xBBU, 0xD3U, 0xA3U, 0xACU,
-    0xB9U, 0xB2U, 0xCDU, 0xACU, 0xCAU, 0xD8U, 0xBBU, 0xA4U,
-    0xC2U, 0xCCU, 0xCBU, 0xAEU, 0xC7U, 0xE0U, 0xC9U, 0xBDU,
-    0xBAU, 0xCDU, 0xC3U, 0xC0U, 0xBAU, 0xC3U, 0xBCU, 0xD2U,
-    0xD4U, 0xB0U, 0xA1U, 0xA3U, 0xB0U, 0xB2U, 0xC8U, 0xABU,
-    0xD4U, 0xF0U, 0xC8U, 0xCEU, 0xD6U, 0xD8U, 0xD3U, 0xDAU,
-    0xCCU, 0xA9U, 0xC9U, 0xBDU, 0xA3U, 0xACU, 0xB7U, 0xC0U,
-    0xBBU, 0xF0U, 0xD2U, 0xE2U, 0xCAU, 0xB6U, 0xC0U, 0xCEU,
-    0xBCU, 0xC7U, 0xD0U, 0xC4U, 0xBCU, 0xE4U, 0xA1U, 0xA3U
+    0xD7U, 0xA2U, 0xD2U, 0xE2U, 0xB0U, 0xB2U, 0xC8U, 0xABU
   };
   /* Temporary input: future RS485 supplies this ID through the same App API. */
   static const uint8_t remote_modem_test_id[] = "kvt9dxr84qrryr1z";
@@ -580,6 +616,22 @@ void start_or_test_f(void *pvParameters)
   /* add user code begin start_or_test_f 2 */
   log_ret = plat_log_init();
   gpio_irq_test_init();
+  {
+    const comm_app_io_t comm_io = {bsp_rs485_init, bsp_rs485_poll, bsp_rs485_send};
+    const comm_app_actions_t comm_actions =
+    {
+      .p_context = &g_checkpoint_config,
+      .pf_voice_set = checkpoint_comm_voice_set,
+      .pf_voice_repeat_set = checkpoint_comm_voice_repeat_set,
+      .pf_display_set = checkpoint_comm_display_set,
+      .pf_play = checkpoint_comm_play,
+      .pf_stop = checkpoint_comm_stop
+    };
+    g_checkpoint_config.voice_repeat = CHECKPOINT_CONFIG_VOICE_REPEAT_DEFAULT;
+    const platform_err_t comm_ret = comm_app_init(&comm_io, &comm_actions);
+    if (PLATFORM_ERR_OK != comm_ret)
+      plat_log_e("COMM startup failed: ret=%d", (int)comm_ret);
+  }
   plat_log_i("TF_CD_TEST app init ret=%d, debounce=50 ms",
              (int)sd_card_presence_app_init());
   sd_card_presence_app_poll();
@@ -608,7 +660,7 @@ void start_or_test_f(void *pvParameters)
     plat_log_i("4G application init=%d, test: newline echo enabled",
                (int32_t)remote_modem_app_init(&modem_io));
   }
-  plat_log_i("Audio app init=%d, SW2=MP3, SW3=volume-5, SW4=volume+5/hold=4G config, SW5=voice synthesis",
+  plat_log_i("Audio app init=%d, SW2=MP3, SW3=volume-5, SW4=volume+5/hold=4G config, SW5=voice x3/double x1/hold stop",
               (int32_t)app_ret);
 
   now_ms = plat_tick_get_ms();
@@ -701,6 +753,33 @@ void start_or_test_f(void *pvParameters)
                    (unsigned long)uxTaskGetStackHighWaterMark(NULL));
         continue;
       }
+      if(3U == button_index)
+      {
+        if(PLATFORM_ERR_OK == app_ret)
+        {
+          if(BUTTON_EVENT_LONG_PRESS == button_event)
+          {
+            play_ret = audio_playback_app_stop();
+            plat_log_i("SW5 stop request enqueue ret=%d", (int32_t)play_ret);
+          }
+          else if((BUTTON_EVENT_CLICK == button_event) ||
+                  (BUTTON_EVENT_DOUBLE_CLICK == button_event))
+          {
+            const audio_playback_voice_request_t request =
+            {
+              .encoding = BSP_VOICE_SYNTHESIS_ENCODING_GBK,
+              .p_text = voice_synthesis_test_text,
+              .text_size = (uint16_t)sizeof(voice_synthesis_test_text),
+              .repeat_count = (BUTTON_EVENT_CLICK == button_event) ? 3U : 0U
+            };
+
+            play_ret = audio_playback_app_voice_request(&request);
+            plat_log_i("SW5 voice request enqueue ret=%d, repeat_count=%u",
+                       (int32_t)play_ret, (unsigned int)request.repeat_count);
+          }
+        }
+        continue;
+      }
       if(BUTTON_EVENT_PRESS != button_event)
       {
         continue;
@@ -714,17 +793,6 @@ void start_or_test_f(void *pvParameters)
           plat_log_i("SW2 pressed, MP3 request enqueue ret=%d",
                      (int32_t)play_ret);
         }
-      }
-      else if(3U == button_index)
-      {
-//        platform_err_t vtx_ret;
-
-//        vtx_ret = audio_playback_app_voice_speak(
-//            BSP_VOICE_SYNTHESIS_ENCODING_GBK,
-//            voice_synthesis_test_text,
-//            (uint16_t)sizeof(voice_synthesis_test_text));
-//        plat_log_i("SW5 pressed, VTX316 request enqueue ret=%d",
-//                   (int32_t)vtx_ret);
       }
       else
       {

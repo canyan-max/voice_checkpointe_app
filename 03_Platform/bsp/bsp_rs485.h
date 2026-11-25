@@ -7,7 +7,7 @@
 
 platform_err_t bsp_rs485_init(void);
 
-/* Return one idle-delimited receive burst; size is zero until UART idle. */
+/* Read up to capacity bytes. Unread bytes stay in the UART ring. */
 platform_err_t bsp_rs485_poll(uint8_t *p_data,
                               uint16_t capacity,
                               uint16_t *p_size);

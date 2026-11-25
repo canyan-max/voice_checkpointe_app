@@ -189,7 +189,7 @@
             <hadIRAM2>0</hadIRAM2>
             <hadIROM2>0</hadIROM2>
             <StupSel>8</StupSel>
-            <useUlib>0</useUlib>
+            <useUlib>1</useUlib>
             <EndSel>0</EndSel>
             <uLtcg>0</uLtcg>
             <nSecure>0</nSecure>
@@ -339,7 +339,7 @@
               <MiscControls></MiscControls>
               <Define>AT32F435VGT7, USE_STDPERIPH_DRIVER, USE_DEBUG_LOG, LFS_DEFINES=lfs_config.h</Define>
               <Undefine></Undefine>
-              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\04_Impl\mcu_at32;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\06_Component\ExternalChip\VTX316;..\..\06_Component\ExternalChip\CAT5171;..\..\06_Component\ExternalChip\GT20L16S1Y;..\..\06_Component\ExternalChip\HG25Q128B;..\..\06_Component\ExternalChip\E27_D;..\..\06_Component\Button;..\..\06_Component\Littlefs;../../middlewares/usb_drivers/inc;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
+              <IncludePath>..\..\libraries\drivers\inc;..\..\libraries\cmsis\cm4\core_support;..\..\libraries\cmsis\cm4\device_support;..\inc;..\..\00_Project_Config;..\..\01_App;..\..\02_Service;..\..\04_Impl\mcu_at32;..\..\03_Platform\bsp;..\..\03_Platform\comm;..\..\03_Platform\mcu_interface;..\..\06_Component\EasyLog\Src;..\..\06_Component\EasyLog\Inc;..\..\06_Component\Kfifo;..\..\06_Component\Minimp3;..\..\06_Component\ExternalChip\CS4344;..\..\06_Component\ExternalChip\TPA3116;..\..\06_Component\ExternalChip\VTX316;..\..\06_Component\ExternalChip\CAT5171;..\..\06_Component\ExternalChip\GT20L16S1Y;..\..\06_Component\ExternalChip\HG25Q128B;..\..\06_Component\ExternalChip\E27_D;..\..\06_Component\Button;..\..\06_Component\Protocol;..\..\06_Component\Littlefs;../../middlewares/usb_drivers/inc;../../middlewares/3rd_party/fatfs/source;../../middlewares/freertos/source/include;../../middlewares/freertos/source/portable/memmang;../../middlewares/freertos/source/portable/GCC/ARM_CM4F</IncludePath>
             </VariousControls>
           </Cads>
           <Aads>
@@ -718,6 +718,16 @@
           <GroupName>01_App</GroupName>
           <Files>
             <File>
+              <FileName>comm_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\01_App\comm_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>comm_app.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\01_App\comm_app.h</FilePath>
+            </File>
+            <File>
               <FileName>audio_playback_app.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\01_App\audio_playback_app.c</FilePath>
@@ -791,6 +801,16 @@
               <FileName>audio_pcm_block.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\02_Service\audio_pcm_block.h</FilePath>
+            </File>
+            <File>
+              <FileName>checkpoint_config.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\02_Service\checkpoint_config.c</FilePath>
+            </File>
+            <File>
+              <FileName>checkpoint_config.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\02_Service\checkpoint_config.h</FilePath>
             </File>
             <File>
               <FileName>audio_player_service.c</FileName>
@@ -1146,6 +1166,21 @@
               <FileName>hg25q128b.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\06_Component\ExternalChip\HG25Q128B\hg25q128b.h</FilePath>
+            </File>
+          </Files>
+        </Group>
+        <Group>
+          <GroupName>06_Component/Protocol</GroupName>
+          <Files>
+            <File>
+              <FileName>proto_checkpoint.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\06_Component\Protocol\proto_checkpoint.h</FilePath>
+            </File>
+            <File>
+              <FileName>proto_checkpoint.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\06_Component\Protocol\proto_checkpoint.c</FilePath>
             </File>
           </Files>
         </Group>

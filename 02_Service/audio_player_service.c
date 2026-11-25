@@ -12,6 +12,8 @@
 #include "bsp_audio_amplifier.h"
 
 #define AUDIO_PLAYER_SERVICE_VOICE_STOP_TIMEOUT_MS  100U
+#define AUDIO_PLAYER_VOICE_ROUND_GAP_MS             (35U)
+#define AUDIO_PLAYER_VOICE_ROUND_TIMEOUT_MS         (180000U)
 
 static platform_err_t audio_player_service_half_write(
     audio_player_service_t  *p_service,
@@ -181,87 +183,155 @@ platform_err_t audio_player_service_unmute(
     return ret;
 }
 
-platform_err_t audio_player_service_voice_synthesis_start(
-    audio_player_service_t         *p_service,
-    bsp_voice_synthesis_encoding_t  encoding,
-    const uint8_t                  *p_text,
-    uint16_t                        text_size,
-    uint32_t                        timeout_ms)
-{
-    platform_err_t ret;
-
-    if((NULL == p_service) || (NULL == p_text) ||
-       (0U == text_size) || (0U == timeout_ms))
-    {
-        return PLATFORM_ERR_PARAM;
-    }
-    if(AUDIO_PLAYER_SERVICE_STATE_IDLE != p_service->state)
-    {
-        return PLATFORM_ERR_BUSY;
-    }
-
-    ret = bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_UNMUTED);
-    if(PLATFORM_ERR_OK == ret)
-    {
-        ret = bsp_voice_synthesis_speak(encoding,
-                                        p_text,
-                                        text_size,
-                                        timeout_ms);
-    }
-    if(PLATFORM_ERR_OK == ret)
-    {
-        p_service->state =
-            AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS;
-    }
-    else
-    {
-        (void)bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_MUTED);
+static platform_err_t
+audio_player_service_voice_round_start(audio_player_voice_session_t *p_voice,
+                                       uint32_t                      now_ms) {
+    platform_err_t ret = bsp_voice_synthesis_speak(p_voice->encoding,
+                                                   p_voice->p_text,
+                                                   p_voice->text_size,
+                                                   p_voice->send_timeout_ms);
+    if (PLATFORM_ERR_OK == ret) {
+        p_voice->phase_started_ms = now_ms;
+        p_voice->waiting_next     = 0U;
+        p_voice->round_confirmed  = 0U;
     }
     return ret;
 }
 
-platform_err_t audio_player_service_voice_synthesis_process(
-    audio_player_service_t       *p_service,
-    bsp_voice_synthesis_event_t  *p_event)
-{
+static platform_err_t
+audio_player_service_voice_cancel(audio_player_service_t *p_service) {
+    uint8_t waiting_next = p_service->voice.waiting_next;
+    p_service->voice     = (audio_player_voice_session_t){0};
+    if (0U != waiting_next) {
+        /* The previous round is already idle. */
+        return PLATFORM_ERR_OK;
+    }
+    return bsp_voice_synthesis_stop(AUDIO_PLAYER_SERVICE_VOICE_STOP_TIMEOUT_MS);
+}
+
+static platform_err_t
+audio_player_service_voice_finish(audio_player_service_t *p_service) {
+    p_service->voice   = (audio_player_voice_session_t){0};
+    platform_err_t ret = bsp_audio_amplifier_mute_set(
+        BSP_AUDIO_AMPLIFIER_MUTED);
+    p_service->state = (PLATFORM_ERR_OK == ret)
+                           ? AUDIO_PLAYER_SERVICE_STATE_IDLE
+                           : AUDIO_PLAYER_SERVICE_STATE_ERROR;
+    return ret;
+}
+
+platform_err_t audio_player_service_voice_synthesis_start(
+    audio_player_service_t        *p_service,
+    bsp_voice_synthesis_encoding_t encoding,
+    const uint8_t                 *p_text,
+    uint16_t                       text_size,
+    uint8_t                        repeat_count,
+    uint32_t                       now_ms,
+    uint32_t                       timeout_ms) {
     platform_err_t ret;
 
-    if((NULL == p_service) || (NULL == p_event))
-    {
+    if ((NULL == p_service) || (NULL == p_text) || (0U == text_size) ||
+        (0U == timeout_ms) || (repeat_count > AUDIO_PLAYER_VOICE_REPEAT_MAX)) {
         return PLATFORM_ERR_PARAM;
     }
-    if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS !=
-       p_service->state)
-    {
+    if (AUDIO_PLAYER_SERVICE_STATE_IDLE != p_service->state) {
         return PLATFORM_ERR_BUSY;
     }
 
-    ret = bsp_voice_synthesis_poll(p_event);
-    if(PLATFORM_ERR_OK != ret)
-    {
-        /* Release the shared player after an RX fault so a later request can
-         * retry instead of leaving the service permanently occupied. */
-        (void)bsp_voice_synthesis_stop(
-            AUDIO_PLAYER_SERVICE_VOICE_STOP_TIMEOUT_MS);
-        (void)bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_MUTED);
-        p_service->state = AUDIO_PLAYER_SERVICE_STATE_IDLE;
+    /* Discard buffered replies from a previous session before sending. */
+    bsp_voice_synthesis_event_t stale = BSP_VOICE_SYNTHESIS_EVENT_NONE;
+    ret                               = bsp_voice_synthesis_poll(&stale);
+    if (PLATFORM_ERR_OK != ret) {
+        return ret;
     }
-    else if(0U != (*p_event &
-                   BSP_VOICE_SYNTHESIS_EVENT_COMMAND_REJECTED))
-    {
-        ret = bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_MUTED);
-        p_service->state = (PLATFORM_ERR_OK == ret) ?
-                           AUDIO_PLAYER_SERVICE_STATE_IDLE :
-                           AUDIO_PLAYER_SERVICE_STATE_ERROR;
+    ret = bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_UNMUTED);
+    if (PLATFORM_ERR_OK != ret) {
+        return ret;
     }
-    else if(0U != (*p_event & BSP_VOICE_SYNTHESIS_EVENT_IDLE))
-    {
-        ret = bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_MUTED);
-        p_service->state = (PLATFORM_ERR_OK == ret) ?
-                           AUDIO_PLAYER_SERVICE_STATE_IDLE :
-                           AUDIO_PLAYER_SERVICE_STATE_ERROR;
+
+    p_service->voice = (audio_player_voice_session_t){
+        .p_text          = p_text,
+        .encoding        = encoding,
+        .send_timeout_ms = timeout_ms,
+        .text_size       = text_size,
+        .remaining       = (0U == repeat_count) ? 1U : repeat_count,
+    };
+    ret = audio_player_service_voice_round_start(&p_service->voice, now_ms);
+    if (PLATFORM_ERR_OK != ret) {
+        (void)audio_player_service_voice_finish(p_service);
+        return ret;
     }
-    return ret;
+    p_service->state = AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS;
+    return PLATFORM_ERR_OK;
+}
+
+platform_err_t audio_player_service_voice_synthesis_process(
+    audio_player_service_t      *p_service,
+    uint32_t                     now_ms,
+    bsp_voice_synthesis_event_t *p_event) {
+    platform_err_t ret;
+
+    if ((NULL == p_service) || (NULL == p_event)) {
+        return PLATFORM_ERR_PARAM;
+    }
+    if (AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS !=
+        p_service->state) {
+        return PLATFORM_ERR_BUSY;
+    }
+
+    audio_player_voice_session_t *p_voice = &p_service->voice;
+    uint32_t elapsed_ms = (uint32_t)(now_ms - p_voice->phase_started_ms);
+    ret                 = bsp_voice_synthesis_poll(p_event);
+    if (PLATFORM_ERR_OK != ret) {
+        (void)audio_player_service_voice_cancel(p_service);
+        (void)audio_player_service_voice_finish(p_service);
+        return ret;
+    }
+
+    if (0U != p_voice->waiting_next) {
+        *p_event = BSP_VOICE_SYNTHESIS_EVENT_NONE;
+        if (elapsed_ms < AUDIO_PLAYER_VOICE_ROUND_GAP_MS) {
+            return PLATFORM_ERR_OK;
+        }
+        ret = audio_player_service_voice_round_start(p_voice, now_ms);
+        if (PLATFORM_ERR_OK != ret) {
+            (void)audio_player_service_voice_finish(p_service);
+        }
+        return ret;
+    }
+
+    if (0U != (*p_event & BSP_VOICE_SYNTHESIS_EVENT_INITIALIZED)) {
+        (void)audio_player_service_voice_finish(p_service);
+        return PLATFORM_ERR_HW;
+    }
+    if (0U != (*p_event & BSP_VOICE_SYNTHESIS_EVENT_COMMAND_REJECTED)) {
+        return audio_player_service_voice_finish(p_service);
+    }
+    if (0U != (*p_event & (BSP_VOICE_SYNTHESIS_EVENT_COMMAND_ACCEPTED |
+                           BSP_VOICE_SYNTHESIS_EVENT_SPEAKING))) {
+        p_voice->round_confirmed = 1U;
+    }
+    if (0U != (*p_event & BSP_VOICE_SYNTHESIS_EVENT_IDLE)) {
+        if (0U != p_voice->round_confirmed) {
+            p_voice->remaining--;
+            if (0U == p_voice->remaining) {
+                return audio_player_service_voice_finish(p_service);
+            }
+            p_voice->phase_started_ms = now_ms;
+            p_voice->waiting_next     = 1U;
+        }
+        *p_event =
+            (bsp_voice_synthesis_event_t)((uint32_t)*p_event &
+                                          ~(uint32_t)
+                                              BSP_VOICE_SYNTHESIS_EVENT_IDLE);
+    }
+    if ((0U == p_voice->waiting_next) &&
+        (elapsed_ms >= AUDIO_PLAYER_VOICE_ROUND_TIMEOUT_MS)) {
+        (void)audio_player_service_voice_cancel(p_service);
+        (void)audio_player_service_voice_finish(p_service);
+        return PLATFORM_ERR_TIMEOUT;
+    }
+    return PLATFORM_ERR_OK;
 }
 
 platform_err_t audio_player_service_refill(
@@ -313,8 +383,7 @@ platform_err_t audio_player_service_stop(audio_player_service_t *p_service)
     if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS ==
        p_service->state)
     {
-        ret = bsp_voice_synthesis_stop(
-            AUDIO_PLAYER_SERVICE_VOICE_STOP_TIMEOUT_MS);
+        ret = audio_player_service_voice_cancel(p_service);
     }
     else
     {
@@ -346,8 +415,7 @@ platform_err_t audio_player_service_emergency_set(
         else if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS ==
                 p_service->state)
         {
-            ret = bsp_voice_synthesis_stop(
-                AUDIO_PLAYER_SERVICE_VOICE_STOP_TIMEOUT_MS);
+            ret = audio_player_service_voice_cancel(p_service);
         }
         if(PLATFORM_ERR_OK == ret)
         {
