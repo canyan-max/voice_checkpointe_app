@@ -43,12 +43,20 @@ typedef struct COMM_APP_ACTIONS_T {
                                    uint16_t       text_size);
     platform_err_t (*pf_voice_repeat_set)(void   *p_context,
                                           uint8_t repeat_count);
+    platform_err_t (*pf_display_repeat_set)(void   *p_context,
+                                            uint8_t repeat_count);
     platform_err_t (*pf_display_set)(void          *p_context,
                                      uint8_t        item_number,
                                      const uint8_t *p_text,
                                      uint16_t       text_size);
     platform_err_t (*pf_play)(void *p_context, uint8_t item_number);
     platform_err_t (*pf_stop)(void *p_context);
+    platform_err_t (*pf_pir_enable_set)(void *p_context, uint8_t enabled);
+    platform_err_t (*pf_pir_item_set)(void *p_context, uint8_t item_number);
+    void (*pf_pir_poll)(void *p_context);
+    void (*pf_device_id_changed)(void *p_context, uint8_t device_id);
+    /* Optional periodic work after handling received bytes and PIR. */
+    void (*pf_config_poll)(void *p_context);
 } comm_app_actions_t;
 
 /* variables ----------------------------------------------------------------*/
@@ -57,7 +65,8 @@ typedef struct COMM_APP_ACTIONS_T {
 
 /* Copies both tables. The referenced context must outlive the task. */
 platform_err_t comm_app_init(const comm_app_io_t      *p_io,
-                             const comm_app_actions_t *p_actions);
+                             const comm_app_actions_t *p_actions,
+                             uint8_t initial_device_id);
 
 #ifdef __cplusplus
 }

@@ -103,6 +103,9 @@ vtx316_ret_t vtx316_speak(vtx316_device_t  *p_device,
 
 vtx316_ret_t vtx316_stop(vtx316_device_t *p_device, uint32_t timeout_ms);
 
+/* Request an asynchronous idle or speaking reply without changing the active command. */
+vtx316_ret_t vtx316_status_request(vtx316_device_t *p_device, uint32_t timeout_ms);
+
 /**
  * @brief Read the R/B pin as a logical busy state.
  * @param p_is_busy Set to 1 while speaking, otherwise 0.

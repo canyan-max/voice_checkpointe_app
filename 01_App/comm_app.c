@@ -16,7 +16,7 @@
 #include "proto_checkpoint.h"
 
 /* define -------------------------------------------------------------------*/
-#define COMM_STACK_WORDS   (384U)
+#define COMM_STACK_WORDS   (768U)
 #define COMM_POLL_MS       (5U)
 #define COMM_RX_CHUNK      (64U)
 #define COMM_PAYLOAD_BYTES (512U)
@@ -70,6 +70,24 @@ comm_actions_handle(const proto_checkpoint_request_t *p_request) {
                                                p_request->p_payload[0U]);
             return (PLATFORM_ERR_OK == ret) ? COMM_ACK_OK : COMM_ACK_FAILED;
         }
+        case PROTO_CHECKPOINT_DISPLAY_REPEAT: {
+            platform_err_t
+                ret = g_comm_actions
+                          .pf_display_repeat_set(g_comm_actions.p_context,
+                                                 p_request->p_payload[0U]);
+            return (PLATFORM_ERR_OK == ret) ? COMM_ACK_OK : COMM_ACK_FAILED;
+        }
+        case PROTO_CHECKPOINT_PIR_ENABLE: {
+            const uint8_t        enabled = (0xFFU == p_request->p_payload[0U]) ? 1U : 0U;
+            const platform_err_t ret = g_comm_actions.pf_pir_enable_set(g_comm_actions.p_context,
+                                                                        enabled);
+            return (PLATFORM_ERR_OK == ret) ? COMM_ACK_OK : COMM_ACK_FAILED;
+        }
+        case PROTO_CHECKPOINT_PIR_ITEM: {
+            const platform_err_t ret = g_comm_actions.pf_pir_item_set(g_comm_actions.p_context,
+                                                                      p_request->p_payload[0U]);
+            return (PLATFORM_ERR_OK == ret) ? COMM_ACK_OK : COMM_ACK_FAILED;
+        }
         case PROTO_CHECKPOINT_PLAY: {
             item_number = p_request->p_payload[0U];
             platform_err_t
@@ -113,7 +131,7 @@ static void comm_handle_request(const proto_checkpoint_request_t *p_request,
                 (COMM_QUERY_ID == p_request->p_payload[0U])) {
                 status = g_comm_parser.device_id;
             } else {
-                update_id = 1U;
+                update_id = (uint8_t)(g_comm_parser.device_id != p_request->p_payload[0U]);
             }
         } else {
             status = comm_actions_handle(p_request);
@@ -140,6 +158,9 @@ static void comm_handle_request(const proto_checkpoint_request_t *p_request,
     if (0U != update_id) {
         /* The reply used the old ID. Switch RX matching after it is sent. */
         g_comm_parser.device_id = p_request->p_payload[0U];
+        if (NULL != g_comm_actions.pf_device_id_changed) {
+            g_comm_actions.pf_device_id_changed(g_comm_actions.p_context, g_comm_parser.device_id);
+        }
         plat_log_i("COMM ID changed: %02X -> %02X", (unsigned int)p_request->id,
                    (unsigned int)g_comm_parser.device_id);
     }
@@ -181,7 +202,7 @@ static void comm_task(void *p_parameter) {
     (void)p_parameter;
 
     plat_log_i("COMM ready: id=%02X",
-               (unsigned int)PROTO_CHECKPOINT_DEFAULT_ID);
+               (unsigned int)g_comm_parser.device_id);
     uint32_t last_rx_ms = plat_tick_get_ms();
     for (;;) {
         uint16_t       size   = 0U;
@@ -200,26 +221,33 @@ static void comm_task(void *p_parameter) {
                 comm_feed_bytes(rx, size);
             }
         }
+        g_comm_actions.pf_pir_poll(g_comm_actions.p_context);
+        if (NULL != g_comm_actions.pf_config_poll) {
+            g_comm_actions.pf_config_poll(g_comm_actions.p_context);
+        }
         vTaskDelay(pdMS_TO_TICKS(COMM_POLL_MS));
     }
 }
 
 /* exported functions -------------------------------------------------------*/
 platform_err_t comm_app_init(const comm_app_io_t      *p_io,
-                             const comm_app_actions_t *p_actions) {
+                             const comm_app_actions_t *p_actions,
+                             uint8_t initial_device_id) {
     if ((NULL == p_io) || (NULL == p_io->pf_init) ||
         (NULL == p_io->pf_receive) || (NULL == p_io->pf_send) ||
         (NULL == p_actions) || (NULL == p_actions->pf_voice_set) ||
         (NULL == p_actions->pf_voice_repeat_set) ||
+        (NULL == p_actions->pf_display_repeat_set) ||
         (NULL == p_actions->pf_display_set) || (NULL == p_actions->pf_play) ||
-        (NULL == p_actions->pf_stop)) {
+        (NULL == p_actions->pf_stop) || (NULL == p_actions->pf_pir_enable_set) ||
+        (NULL == p_actions->pf_pir_item_set) || (NULL == p_actions->pf_pir_poll)) {
         return PLATFORM_ERR_PARAM;
     }
     if (NULL != g_comm_task) {
         return PLATFORM_ERR_OK;
     }
 
-    if (0U == proto_checkpoint_init(&g_comm_parser, PROTO_CHECKPOINT_DEFAULT_ID,
+    if (0U == proto_checkpoint_init(&g_comm_parser, initial_device_id,
                                     g_comm_payload, sizeof(g_comm_payload))) {
         return PLATFORM_ERR_PARAM;
     }

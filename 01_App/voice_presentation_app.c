@@ -27,6 +27,8 @@ typedef enum VOICE_PRESENTATION_STATE_T
 static voice_presentation_state_t voice_presentation_state =
     VOICE_PRESENTATION_STATE_IDLE;
 static uint8_t voice_presentation_initialized;
+/* Owned by the player task. Zero uses the legacy audio-driven finish. */
+static uint8_t g_voice_presentation_scroll_cycles;
 
 /* private functions --------------------------------------------------------*/
 static voice_presentation_state_t voice_presentation_state_get(void)
@@ -86,8 +88,8 @@ platform_err_t voice_presentation_app_init(void)
 }
 
 platform_err_t voice_presentation_app_start(const uint8_t *p_gbk_text,
-                                             uint16_t       text_size)
-{
+                                            uint16_t       text_size,
+                                            uint8_t        scroll_cycles) {
     platform_err_t ret;
 
     if((NULL == p_gbk_text) || (0U == text_size))
@@ -108,18 +110,16 @@ platform_err_t voice_presentation_app_start(const uint8_t *p_gbk_text,
         }
     }
 
-    ret = hub_display_app_show_gbk(p_gbk_text,
-                                   text_size,
-                                   HUB_DISPLAY_APP_MODE_SCROLL);
+    ret = hub_display_app_show_gbk(p_gbk_text, text_size,
+                                   HUB_DISPLAY_APP_MODE_SCROLL, scroll_cycles);
     if(PLATFORM_ERR_BUSY == ret)
     {
         ret = hub_display_app_hide();
         if(PLATFORM_ERR_OK == ret)
         {
-            ret = hub_display_app_show_gbk(
-                      p_gbk_text,
-                      text_size,
-                      HUB_DISPLAY_APP_MODE_SCROLL);
+            ret = hub_display_app_show_gbk(p_gbk_text, text_size,
+                                           HUB_DISPLAY_APP_MODE_SCROLL,
+                                           scroll_cycles);
         }
     }
     if(PLATFORM_ERR_OK != ret)
@@ -135,6 +135,7 @@ platform_err_t voice_presentation_app_start(const uint8_t *p_gbk_text,
     }
 
     taskENTER_CRITICAL();
+    g_voice_presentation_scroll_cycles = scroll_cycles;
     voice_presentation_state = VOICE_PRESENTATION_STATE_ACTIVE;
     taskEXIT_CRITICAL();
     return PLATFORM_ERR_OK;
@@ -158,6 +159,11 @@ platform_err_t voice_presentation_app_audio_finished(void)
     voice_presentation_state = VOICE_PRESENTATION_STATE_FINISH_PENDING;
     taskEXIT_CRITICAL();
 
+    if (0U != g_voice_presentation_scroll_cycles) {
+        /* The display stops at its own target, even after audio ends. */
+        return PLATFORM_ERR_OK;
+    }
+
     ret = hub_display_app_finish_scroll(
               voice_presentation_scroll_finished,
               NULL);
@@ -175,17 +181,27 @@ platform_err_t voice_presentation_app_audio_finished(void)
 platform_err_t voice_presentation_app_process(void)
 {
     platform_err_t ret;
+    voice_presentation_state_t state = voice_presentation_state_get();
 
     if(0U == voice_presentation_initialized)
     {
         return PLATFORM_ERR_HW;
     }
-    if(VOICE_PRESENTATION_STATE_IDLE == voice_presentation_state_get())
+    if(VOICE_PRESENTATION_STATE_IDLE == state)
     {
         return PLATFORM_ERR_OK;
     }
 
-    ret = hub_display_app_process();
+    if ((0U != g_voice_presentation_scroll_cycles) &&
+        (0U == hub_display_app_is_visible())) {
+        ret = hub_display_app_status_get();
+        if ((PLATFORM_ERR_OK == ret) &&
+            (VOICE_PRESENTATION_STATE_FINISH_PENDING == state)) {
+            voice_presentation_scroll_finished(NULL);
+        }
+    } else {
+        ret = hub_display_app_process();
+    }
     if(PLATFORM_ERR_OK != ret)
     {
         taskENTER_CRITICAL();

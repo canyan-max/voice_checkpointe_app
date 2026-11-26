@@ -16,6 +16,9 @@ extern "C"
 
 /* Includes -----------------------------------------------------------------*/
 #include "plat_error.h"
+#include <stdint.h>
+
+#define HUB_DISPLAY_APP_SCROLL_CYCLES_MAX (16U)
 
 /* typedef ------------------------------------------------------------------*/
 typedef void (*hub_display_app_finish_callback_t)(void *p_context);
@@ -30,10 +33,11 @@ typedef enum HUB_DISPLAY_APP_MODE_T
 /* functions ----------------------------------------------------------------*/
 platform_err_t hub_display_app_init(void);
 
-platform_err_t hub_display_app_show_gbk(
-    const uint8_t         *p_text,
-    uint16_t               text_size,
-    hub_display_app_mode_t mode);
+/* Zero cycles keeps scrolling until finish_scroll or hide. */
+platform_err_t hub_display_app_show_gbk(const uint8_t         *p_text,
+                                        uint16_t               text_size,
+                                        hub_display_app_mode_t mode,
+                                        uint8_t                scroll_cycles);
 
 platform_err_t hub_display_app_finish_scroll(
     hub_display_app_finish_callback_t callback,

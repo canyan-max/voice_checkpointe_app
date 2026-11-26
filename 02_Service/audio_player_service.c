@@ -220,6 +220,41 @@ audio_player_service_voice_finish(audio_player_service_t *p_service) {
     return ret;
 }
 
+platform_err_t audio_player_service_voice_ready_poll(audio_player_service_t *p_service,
+                                                     uint32_t                probe_timeout_ms) {
+    if (NULL == p_service) {
+        return PLATFORM_ERR_PARAM;
+    }
+    if (AUDIO_PLAYER_SERVICE_STATE_IDLE != p_service->state) {
+        return PLATFORM_ERR_BUSY;
+    }
+    if (0U != p_service->voice_ready) {
+        return PLATFORM_ERR_OK;
+    }
+
+    bsp_voice_synthesis_event_t event = BSP_VOICE_SYNTHESIS_EVENT_NONE;
+    platform_err_t              ret   = bsp_voice_synthesis_poll(&event);
+    if (PLATFORM_ERR_OK != ret) {
+        return ret;
+    }
+    if (((0U == p_service->voice_probe_sent) &&
+         (0U != (event & BSP_VOICE_SYNTHESIS_EVENT_INITIALIZED))) ||
+        ((0U != p_service->voice_probe_sent) && (0U != (event & BSP_VOICE_SYNTHESIS_EVENT_IDLE)) &&
+         (0U == (event & BSP_VOICE_SYNTHESIS_EVENT_SPEAKING)))) {
+        p_service->voice_ready      = 1U;
+        p_service->voice_probe_sent = 0U;
+        return PLATFORM_ERR_OK;
+    }
+    if (0U != probe_timeout_ms) {
+        ret = bsp_voice_synthesis_status_request(probe_timeout_ms);
+        if (PLATFORM_ERR_OK != ret) {
+            return ret;
+        }
+        p_service->voice_probe_sent = 1U;
+    }
+    return PLATFORM_ERR_BUSY;
+}
+
 platform_err_t audio_player_service_voice_synthesis_start(
     audio_player_service_t        *p_service,
     bsp_voice_synthesis_encoding_t encoding,
@@ -238,10 +273,15 @@ platform_err_t audio_player_service_voice_synthesis_start(
         return PLATFORM_ERR_BUSY;
     }
 
+    if (0U == p_service->voice_ready) {
+        return PLATFORM_ERR_BUSY;
+    }
+
     /* Discard buffered replies from a previous session before sending. */
     bsp_voice_synthesis_event_t stale = BSP_VOICE_SYNTHESIS_EVENT_NONE;
     ret                               = bsp_voice_synthesis_poll(&stale);
     if (PLATFORM_ERR_OK != ret) {
+        p_service->voice_ready = 0U;
         return ret;
     }
     ret = bsp_audio_amplifier_mute_set(BSP_AUDIO_AMPLIFIER_UNMUTED);
@@ -283,9 +323,18 @@ platform_err_t audio_player_service_voice_synthesis_process(
     uint32_t elapsed_ms = (uint32_t)(now_ms - p_voice->phase_started_ms);
     ret                 = bsp_voice_synthesis_poll(p_event);
     if (PLATFORM_ERR_OK != ret) {
+        p_service->voice_ready = 0U;
+        /* A failed poll may have collected only part of the event history. */
+        *p_event = BSP_VOICE_SYNTHESIS_EVENT_NONE;
         (void)audio_player_service_voice_cancel(p_service);
         (void)audio_player_service_voice_finish(p_service);
         return ret;
+    }
+
+    if (0U != (*p_event & BSP_VOICE_SYNTHESIS_EVENT_INITIALIZED)) {
+        p_service->voice_ready = 0U;
+        (void)audio_player_service_voice_finish(p_service);
+        return PLATFORM_ERR_HW;
     }
 
     if (0U != p_voice->waiting_next) {
@@ -300,10 +349,6 @@ platform_err_t audio_player_service_voice_synthesis_process(
         return ret;
     }
 
-    if (0U != (*p_event & BSP_VOICE_SYNTHESIS_EVENT_INITIALIZED)) {
-        (void)audio_player_service_voice_finish(p_service);
-        return PLATFORM_ERR_HW;
-    }
     if (0U != (*p_event & BSP_VOICE_SYNTHESIS_EVENT_COMMAND_REJECTED)) {
         return audio_player_service_voice_finish(p_service);
     }

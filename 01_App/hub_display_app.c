@@ -34,6 +34,7 @@ static uint8_t hub_display_app_initialized;
 static volatile uint8_t hub_display_app_visible;
 static volatile uint8_t hub_display_app_finish_pending;
 static uint8_t hub_display_app_finish_start_cycle;
+static uint8_t                 g_hub_display_scroll_cycles;
 static hub_display_app_finish_callback_t hub_display_app_finish_callback;
 static void *hub_display_app_finish_context;
 
@@ -69,37 +70,45 @@ static void hub_display_app_timer_callback(TimerHandle_t timer)
     {
         return;
     }
+    if(0U == hub_display_app_visible)
+    {
+        (void)xSemaphoreGive(hub_display_app_mutex);
+        return;
+    }
 
     finish_notify = 0U;
     ret = hub_display_service_refresh(&hub_display_app_service);
     if(PLATFORM_ERR_OK != ret)
     {
-        hub_display_app_visible = 0U;
         hub_display_app_finish_pending = 0U;
         hub_display_app_last_error = ret;
         (void)hub_display_service_stop(&hub_display_app_service);
         finish_notify = 1U;
-    }
-    else if(0U != hub_display_app_finish_pending)
-    {
+    } else if ((0U != hub_display_app_finish_pending) ||
+               (0U != g_hub_display_scroll_cycles)) {
         ret = hub_display_service_scroll_cycle_count_get(
                   &hub_display_app_service,
                   &scroll_cycle_count);
-        if((PLATFORM_ERR_OK == ret) &&
-           (hub_display_app_finish_start_cycle != scroll_cycle_count))
-        {
-            hub_display_app_visible = 0U;
+        if ((PLATFORM_ERR_OK == ret) &&
+            (((0U != g_hub_display_scroll_cycles) &&
+              (scroll_cycle_count >= g_hub_display_scroll_cycles)) ||
+             ((0U != hub_display_app_finish_pending) &&
+              (hub_display_app_finish_start_cycle != scroll_cycle_count)))) {
             hub_display_app_finish_pending = 0U;
             hub_display_app_last_error = hub_display_service_stop(
                                              &hub_display_app_service);
             finish_notify = 1U;
         }
     }
+    if(0U != finish_notify)
+    {
+        (void)xTimerStop(hub_display_app_timer, 0U);
+        hub_display_app_visible = 0U;
+    }
     (void)xSemaphoreGive(hub_display_app_mutex);
 
     if(0U != finish_notify)
     {
-        (void)xTimerStop(hub_display_app_timer, 0U);
         hub_display_app_finish_notify();
     }
 }
@@ -153,19 +162,19 @@ platform_err_t hub_display_app_init(void)
     return PLATFORM_ERR_OK;
 }
 
-platform_err_t hub_display_app_show_gbk(
-    const uint8_t         *p_text,
-    uint16_t               text_size,
-    hub_display_app_mode_t mode)
-{
+platform_err_t hub_display_app_show_gbk(const uint8_t         *p_text,
+                                        uint16_t               text_size,
+                                        hub_display_app_mode_t mode,
+                                        uint8_t                scroll_cycles) {
     platform_err_t ret;
     uint8_t scroll_enabled;
 
-    if((NULL == p_text) || (0U == text_size) ||
-       (HUB_DISPLAY_APP_TEXT_MAX_BYTES < text_size) ||
-       (0U == hub_display_app_initialized) ||
-       (HUB_DISPLAY_APP_MODE_COUNT <= mode))
-    {
+    if ((NULL == p_text) || (0U == text_size) ||
+        (HUB_DISPLAY_APP_TEXT_MAX_BYTES < text_size) ||
+        (0U == hub_display_app_initialized) ||
+        (scroll_cycles > HUB_DISPLAY_APP_SCROLL_CYCLES_MAX) ||
+        ((0U != scroll_cycles) && (HUB_DISPLAY_APP_MODE_SCROLL != mode)) ||
+        (HUB_DISPLAY_APP_MODE_COUNT <= mode)) {
         return PLATFORM_ERR_PARAM;
     }
     if(0U != hub_display_app_visible)
@@ -194,11 +203,12 @@ platform_err_t hub_display_app_show_gbk(
         return ret;
     }
 
-    hub_display_app_visible = 1U;
+    g_hub_display_scroll_cycles        = scroll_cycles;
     hub_display_app_finish_pending = 0U;
     hub_display_app_finish_start_cycle = 0U;
     hub_display_app_finish_callback = NULL;
     hub_display_app_finish_context = NULL;
+    hub_display_app_visible = 1U;
     if(pdPASS != xTimerStart(hub_display_app_timer, 0U))
     {
         hub_display_app_visible = 0U;
@@ -269,6 +279,12 @@ platform_err_t hub_display_app_process(void)
     if(pdPASS != xSemaphoreTake(hub_display_app_mutex, portMAX_DELAY))
     {
         return PLATFORM_ERR_BUSY;
+    }
+    /* The timer may have finished the last cycle while we took the mutex. */
+    if(0U == hub_display_app_visible)
+    {
+        (void)xSemaphoreGive(hub_display_app_mutex);
+        return PLATFORM_ERR_OK;
     }
     ret = hub_display_service_stream_process(
               &hub_display_app_service,

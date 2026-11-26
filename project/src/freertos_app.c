@@ -25,6 +25,8 @@
 #include "bsp_rs485.h"
 #include "comm_app.h"
 #include "checkpoint_config.h"
+#include "checkpoint_config_storage.h"
+#include "proto_checkpoint.h"
 #include "fatfs_disk.h"
 #include <string.h>
 #include "usb_core.h"
@@ -47,6 +49,11 @@
 #define START_TEST_VOLUME_STEP              5U
 #define START_TEST_I2C_TIMEOUT_MS          100U
 
+#define CHECKPOINT_FLASH_TIMEOUT_MS         (100U)
+#define CHECKPOINT_SAVE_QUIET_MS            (250U)
+#define CHECKPOINT_SAVE_RETRY_MS           (1000U)
+#define CHECKPOINT_PIR_MIN_INTERVAL_MS       (2000U)
+
 /* add user code end private define */
 
 /* private macro -------------------------------------------------------------*/
@@ -58,7 +65,11 @@
 /* add user code begin private variables */
 
 /* Bound to the COMM task at startup; callbacks are its only runtime callers. */
-static checkpoint_config_t g_checkpoint_config;
+static checkpoint_config_t s_checkpoint_config;
+static uint8_t s_checkpoint_storage_ready;
+static uint8_t s_checkpoint_save_pending;
+static uint32_t s_checkpoint_save_since_ms;
+static uint32_t s_checkpoint_save_wait_ms;
 
 /* add user code end private variables */
 
@@ -70,18 +81,105 @@ static checkpoint_config_t g_checkpoint_config;
 /* private user code ---------------------------------------------------------*/
 /* add user code begin 0 */
 
+static void checkpoint_storage_init(void)
+{
+  s_checkpoint_config.device_id = PROTO_CHECKPOINT_DEFAULT_ID;
+  s_checkpoint_config.voice_repeat = CHECKPOINT_CONFIG_VOICE_REPEAT_DEFAULT;
+  s_checkpoint_config.display_repeat = CHECKPOINT_CONFIG_DISPLAY_REPEAT_DEFAULT;
+  s_checkpoint_config.pir_enabled = CHECKPOINT_CONFIG_PIR_ENABLED_DEFAULT;
+  s_checkpoint_config.pir_item_number = CHECKPOINT_CONFIG_PIR_ITEM_DEFAULT;
+  uint8_t formatted = 0U;
+  storage_filesystem_service_ret_t ret =
+      storage_filesystem_service_init(CHECKPOINT_FLASH_TIMEOUT_MS, &formatted);
+  if(STORAGE_FILESYSTEM_SERVICE_RET_OK != ret)
+  {
+    plat_log_w("Checkpoint QSPI mount failed: ret=%d, defaults active", (int)ret);
+    return;
+  }
+  s_checkpoint_storage_ready = 1U;
+  ret = checkpoint_config_storage_load(&s_checkpoint_config);
+  if(STORAGE_FILESYSTEM_SERVICE_RET_OK == ret)
+  {
+    plat_log_i("Checkpoint QSPI loaded: id=%02X stack_free=%lu words",
+               (unsigned int)s_checkpoint_config.device_id,
+               (unsigned long)uxTaskGetStackHighWaterMark(NULL));
+  }
+  else if(STORAGE_FILESYSTEM_SERVICE_RET_NOT_FOUND == ret)
+  {
+    plat_log_i("Checkpoint QSPI no config: defaults active, formatted=%u stack_free=%lu words",
+               (unsigned int)formatted, (unsigned long)uxTaskGetStackHighWaterMark(NULL));
+  }
+  else
+  {
+    plat_log_w("Checkpoint QSPI load failed: ret=%d, defaults active", (int)ret);
+  }
+}
+
+static platform_err_t checkpoint_config_mark_changed(platform_err_t ret)
+{
+  if((PLATFORM_ERR_OK == ret) && (0U != s_checkpoint_storage_ready))
+  {
+    s_checkpoint_save_pending = 1U;
+    s_checkpoint_save_since_ms = plat_tick_get_ms();
+    s_checkpoint_save_wait_ms = CHECKPOINT_SAVE_QUIET_MS;
+  }
+  return ret;
+}
+
+static void checkpoint_comm_device_id_changed(void *p_context, uint8_t device_id)
+{
+  checkpoint_config_t *p_config = p_context;
+  if(NULL != p_config)
+  {
+    p_config->device_id = device_id;
+    (void)checkpoint_config_mark_changed(PLATFORM_ERR_OK);
+  }
+}
+
+static void checkpoint_comm_config_poll(void *p_context)
+{
+  const checkpoint_config_t *p_config = p_context;
+  if((NULL == p_config) || (0U == s_checkpoint_save_pending))
+  {
+    return;
+  }
+  const uint32_t now_ms = plat_tick_get_ms();
+  if((uint32_t)(now_ms - s_checkpoint_save_since_ms) < s_checkpoint_save_wait_ms)
+  {
+    return;
+  }
+
+  const storage_filesystem_service_ret_t ret = checkpoint_config_storage_save(p_config);
+  const uint32_t done_ms = plat_tick_get_ms();
+  if(STORAGE_FILESYSTEM_SERVICE_RET_OK == ret)
+  {
+    s_checkpoint_save_pending = 0U;
+    plat_log_i("Checkpoint QSPI saved: id=%02X took=%lu ms stack_free=%lu words",
+               (unsigned int)p_config->device_id, (unsigned long)(done_ms - now_ms),
+               (unsigned long)uxTaskGetStackHighWaterMark(NULL));
+  }
+  else
+  {
+    s_checkpoint_save_since_ms = done_ms;
+    s_checkpoint_save_wait_ms = CHECKPOINT_SAVE_RETRY_MS;
+    plat_log_w("Checkpoint QSPI save failed: ret=%d, retry scheduled", (int)ret);
+  }
+}
+
 static platform_err_t checkpoint_comm_voice_set(void *p_context,
                                                 uint8_t item_number,
                                                 const uint8_t *p_text,
                                                 uint16_t text_size)
 {
-  return checkpoint_config_voice_set(p_context, item_number, p_text, text_size);
+  return checkpoint_config_mark_changed(
+      checkpoint_config_voice_set(p_context, item_number, p_text, text_size));
 }
 
 static platform_err_t checkpoint_comm_voice_repeat_set(void *p_context,
                                                        uint8_t repeat_count)
 {
-  return checkpoint_config_voice_repeat_set(p_context, repeat_count);
+  return checkpoint_config_mark_changed(
+      checkpoint_config_voice_repeat_set(p_context, repeat_count));
 }
 
 static platform_err_t checkpoint_comm_display_set(void *p_context,
@@ -89,8 +187,15 @@ static platform_err_t checkpoint_comm_display_set(void *p_context,
                                                   const uint8_t *p_text,
                                                   uint16_t text_size)
 {
-  return checkpoint_config_display_set(p_context, item_number, p_text,
-                                       text_size);
+  return checkpoint_config_mark_changed(
+      checkpoint_config_display_set(p_context, item_number, p_text, text_size));
+}
+
+static platform_err_t checkpoint_comm_display_repeat_set(void *p_context,
+                                                         uint8_t repeat_count)
+{
+  return checkpoint_config_mark_changed(
+      checkpoint_config_display_repeat_set(p_context, repeat_count));
 }
 
 static platform_err_t checkpoint_comm_play(void *p_context, uint8_t item_number)
@@ -111,7 +216,8 @@ static platform_err_t checkpoint_comm_play(void *p_context, uint8_t item_number)
     .text_size = p_item->voice_text_size,
     .repeat_count = p_config->voice_repeat,
     .p_caption_gbk = p_item->display_text,
-    .caption_size = p_item->display_text_size
+    .caption_size = p_item->display_text_size,
+    .caption_cycles = (0U == p_config->display_repeat) ? 1U : p_config->display_repeat
   };
   return audio_playback_app_voice_request(&request);
 }
@@ -122,9 +228,11 @@ static platform_err_t checkpoint_comm_stop(void *p_context)
   return audio_playback_app_stop();
 }
 
-/* Temporary EXINT board test: ISR owns counters, this task owns logging.
- * No debounce; multiple edges can be reported together by the task. */
+/* ISR owns the counters. COMM consumes PIR edges; the board test reports both inputs. */
 static volatile uint32_t gpio_irq_test_count[2];
+static uint32_t s_pir_edge_consumed;
+static uint32_t s_pir_last_accepted_ms;
+static uint8_t s_pir_edge_accepted;
 static uint32_t gpio_irq_test_reported[2];
 static const plat_gpio_id_t gpio_irq_test_ids[2] =
 {
@@ -141,6 +249,69 @@ static void gpio_irq_test_callback(plat_gpio_id_t id)
     gpio_irq_test_count[0]++;
   else if(id == BOARD_GPIO_PIR_IN)
     gpio_irq_test_count[1]++;
+}
+
+static platform_err_t checkpoint_comm_pir_enable_set(void *p_context, uint8_t enabled)
+{
+  checkpoint_config_t *p_config = p_context;
+  if(NULL == p_config)
+  {
+    return PLATFORM_ERR_PARAM;
+  }
+
+  const uint8_t was_enabled = p_config->pir_enabled;
+  const platform_err_t ret = checkpoint_config_pir_enable_set(p_config, enabled);
+  if((PLATFORM_ERR_OK == ret) && (0U == was_enabled) && (0U != enabled))
+  {
+    /* Ignore edges from before PIR was enabled. Only the ISR updates the counter. */
+    s_pir_edge_consumed = gpio_irq_test_count[1U];
+    s_pir_edge_accepted = 0U;
+  }
+  return (was_enabled != enabled) ? checkpoint_config_mark_changed(ret) : ret;
+}
+
+static platform_err_t checkpoint_comm_pir_item_set(void *p_context, uint8_t item_number)
+{
+  return checkpoint_config_mark_changed(checkpoint_config_pir_item_set(p_context, item_number));
+}
+
+static void checkpoint_comm_pir_poll(void *p_context)
+{
+  const checkpoint_config_t *p_config = p_context;
+  const uint32_t edge_count = gpio_irq_test_count[1U];
+  if((NULL == p_config) || (edge_count == s_pir_edge_consumed))
+  {
+    return;
+  }
+
+  /* Coalesce edges between polls; do not retry a rejected request. */
+  s_pir_edge_consumed = edge_count;
+  if(0U != p_config->pir_enabled)
+  {
+    const uint32_t now_ms = plat_tick_get_ms();
+    if((0U != s_pir_edge_accepted) &&
+       ((uint32_t)(now_ms - s_pir_last_accepted_ms) < CHECKPOINT_PIR_MIN_INTERVAL_MS))
+    {
+      return;
+    }
+
+    /* Ignored edges do not extend the window, even if the player is busy. */
+    s_pir_last_accepted_ms = now_ms;
+    s_pir_edge_accepted = 1U;
+    const uint8_t item_number = p_config->pir_item_number;
+    const platform_err_t ret = checkpoint_comm_play(p_context, item_number);
+    if(PLATFORM_ERR_OK == ret)
+    {
+      plat_log_i("PIR falling edge, voice enqueued: item=%u stack_free=%lu words",
+                 (unsigned int)item_number,
+                 (unsigned long)uxTaskGetStackHighWaterMark(NULL));
+    }
+    else
+    {
+      plat_log_w("PIR falling edge, voice not enqueued: item=%u ret=%d",
+                 (unsigned int)item_number, (int)ret);
+    }
+  }
 }
 
 static void gpio_irq_test_init(void)
@@ -616,22 +787,7 @@ void start_or_test_f(void *pvParameters)
   /* add user code begin start_or_test_f 2 */
   log_ret = plat_log_init();
   gpio_irq_test_init();
-  {
-    const comm_app_io_t comm_io = {bsp_rs485_init, bsp_rs485_poll, bsp_rs485_send};
-    const comm_app_actions_t comm_actions =
-    {
-      .p_context = &g_checkpoint_config,
-      .pf_voice_set = checkpoint_comm_voice_set,
-      .pf_voice_repeat_set = checkpoint_comm_voice_repeat_set,
-      .pf_display_set = checkpoint_comm_display_set,
-      .pf_play = checkpoint_comm_play,
-      .pf_stop = checkpoint_comm_stop
-    };
-    g_checkpoint_config.voice_repeat = CHECKPOINT_CONFIG_VOICE_REPEAT_DEFAULT;
-    const platform_err_t comm_ret = comm_app_init(&comm_io, &comm_actions);
-    if (PLATFORM_ERR_OK != comm_ret)
-      plat_log_e("COMM startup failed: ret=%d", (int)comm_ret);
-  }
+  checkpoint_storage_init();
   plat_log_i("TF_CD_TEST app init ret=%d, debounce=50 ms",
              (int)sd_card_presence_app_init());
   sd_card_presence_app_poll();
@@ -655,6 +811,29 @@ void start_or_test_f(void *pvParameters)
   plat_log_i("Voice presentation app init=%d, idle display/LEDs=off",
              (int32_t)presentation_ret);
   app_ret = audio_playback_app_init();
+  {
+    const comm_app_io_t comm_io = {bsp_rs485_init, bsp_rs485_poll, bsp_rs485_send};
+    const comm_app_actions_t comm_actions =
+    {
+      .p_context = &s_checkpoint_config,
+      .pf_voice_set = checkpoint_comm_voice_set,
+      .pf_voice_repeat_set = checkpoint_comm_voice_repeat_set,
+      .pf_display_set = checkpoint_comm_display_set,
+      .pf_display_repeat_set = checkpoint_comm_display_repeat_set,
+      .pf_play = checkpoint_comm_play,
+      .pf_stop = checkpoint_comm_stop,
+      .pf_pir_enable_set = checkpoint_comm_pir_enable_set,
+      .pf_pir_item_set = checkpoint_comm_pir_item_set,
+      .pf_pir_poll = checkpoint_comm_pir_poll,
+      .pf_device_id_changed = checkpoint_comm_device_id_changed,
+      .pf_config_poll = checkpoint_comm_config_poll
+    };
+    s_pir_edge_consumed = gpio_irq_test_count[1U];
+    const platform_err_t comm_ret = comm_app_init(&comm_io, &comm_actions,
+                                                  s_checkpoint_config.device_id);
+    if (PLATFORM_ERR_OK != comm_ret)
+      plat_log_e("COMM startup failed: ret=%d", (int)comm_ret);
+  }
   {
     const remote_modem_app_io_t modem_io = {NULL, NULL, 1U};
     plat_log_i("4G application init=%d, test: newline echo enabled",

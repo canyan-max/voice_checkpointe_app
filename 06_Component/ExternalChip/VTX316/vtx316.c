@@ -15,6 +15,7 @@
 #define VTX316_FRAME_HEAD        0xFDU
 #define VTX316_COMMAND_SPEAK     0x01U
 #define VTX316_COMMAND_STOP      0x02U
+#define VTX316_COMMAND_STATUS    (0x21U)
 #define VTX316_COMMAND_SIZE      1U
 #define VTX316_ENCODING_SIZE     1U
 #define VTX316_CONTROL_HEAD_SIZE 4U
@@ -165,6 +166,10 @@ vtx316_ret_t vtx316_stop(vtx316_device_t *p_device, uint32_t timeout_ms)
         p_device->state = VTX316_STATE_IDLE;
     }
     return ret;
+}
+
+vtx316_ret_t vtx316_status_request(vtx316_device_t *p_device, uint32_t timeout_ms) {
+    return vtx316_control_send(p_device, VTX316_COMMAND_STATUS, timeout_ms);
 }
 
 vtx316_ret_t vtx316_busy_get(vtx316_device_t *p_device,

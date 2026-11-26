@@ -72,6 +72,10 @@ storage_filesystem_service_ret_t storage_filesystem_service_file_sync(void);
 
 storage_filesystem_service_ret_t storage_filesystem_service_file_close(void);
 
+/* Replace the destination in one filesystem operation; both files must be closed. */
+storage_filesystem_service_ret_t storage_filesystem_service_file_replace(const char *p_source,
+                                                                        const char *p_destination);
+
 #ifdef __cplusplus
 }
 #endif

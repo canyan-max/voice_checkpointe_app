@@ -20,6 +20,7 @@
 #include "plat_log.h"
 #include "plat_sys.h"
 #include "voice_presentation_app.h"
+#include "hub_display_app.h"
 #include "sd_card_presence_app.h"
 #include "sd_disk_state.h"
 
@@ -36,6 +37,11 @@
 #define AUDIO_APP_CS4344_WARMUP_RATE_HZ       (44100U)
 #define AUDIO_APP_CS4344_WARMUP_SESSION_ID    (UINT32_MAX)
 #define AUDIO_APP_VOICE_SYNTHESIS_POLL_MS         (10U)
+/* The chip manual allows simple UART commands 650 ms after power-on. */
+#define AUDIO_APP_VOICE_STARTUP_PROBE_MS       (650U)
+#define AUDIO_APP_VOICE_READY_PROBE_INTERVAL_MS (100U)
+#define AUDIO_APP_VOICE_READY_PROBE_SEND_MS      (20U)
+#define AUDIO_APP_VOICE_READY_REPLY_WINDOW_MS   (500U)
 #define AUDIO_APP_VOICE_SYNTHESIS_SEND_TIMEOUT_MS (100U)
 
 #define AUDIO_APP_PLAYER_NOTIFY_COMMAND       (1UL << 0)
@@ -64,6 +70,7 @@ typedef struct AUDIO_APP_PLAYER_COMMAND_T
     bsp_voice_synthesis_encoding_t  voice_encoding;
     uint16_t                        voice_text_size;
     uint16_t                        caption_size;
+    uint8_t                         caption_cycles;
     uint8_t                         voice_repeat_count;
     uint8_t                         emergency_active;
     uint32_t                        sd_generation;
@@ -674,6 +681,39 @@ static void audio_app_mp3_request_handle(
     }
 }
 
+/* Run in the player task only; COMM and the other tasks keep running. */
+static platform_err_t audio_app_voice_ready_wait(uint32_t started_ms, uint32_t probe_after_ms) {
+    uint32_t last_probe_ms = 0U;
+    uint8_t  probe_sent    = 0U;
+
+    for (;;) {
+        const uint32_t now_ms           = plat_tick_get_ms();
+        const uint32_t elapsed_ms       = (uint32_t)(now_ms - started_ms);
+        const uint8_t  timed_out        = (elapsed_ms >= probe_after_ms) &&
+                                          ((elapsed_ms - probe_after_ms) >=
+                                           AUDIO_APP_VOICE_READY_REPLY_WINDOW_MS);
+        uint32_t       probe_timeout_ms = 0U;
+        if ((0U == timed_out) && (elapsed_ms >= probe_after_ms) &&
+            ((0U == probe_sent) ||
+             ((uint32_t)(now_ms - last_probe_ms) >= AUDIO_APP_VOICE_READY_PROBE_INTERVAL_MS))) {
+            probe_timeout_ms = AUDIO_APP_VOICE_READY_PROBE_SEND_MS;
+        }
+        const platform_err_t ret = audio_player_service_voice_ready_poll(&audio_app_player_service,
+                                                                         probe_timeout_ms);
+        if (PLATFORM_ERR_BUSY != ret) {
+            return ret;
+        }
+        if (0U != probe_timeout_ms) {
+            last_probe_ms = now_ms;
+            probe_sent    = 1U;
+        }
+        if (0U != timed_out) {
+            return PLATFORM_ERR_TIMEOUT;
+        }
+        vTaskDelay(pdMS_TO_TICKS(AUDIO_APP_VOICE_SYNTHESIS_POLL_MS));
+    }
+}
+
 static void audio_app_voice_synthesis_request_handle(
     const audio_app_player_command_t *p_command)
 {
@@ -685,6 +725,13 @@ static void audio_app_voice_synthesis_request_handle(
     {
         plat_log_w("Voice synthesis request rejected: player busy, state=%u",
                    (unsigned int)player_state);
+        audio_app_voice_request_release();
+        return;
+    }
+
+    ret = audio_app_voice_ready_wait(plat_tick_get_ms(), 0U);
+    if (PLATFORM_ERR_OK != ret) {
+        plat_log_w("Voice synthesis request rejected: chip not ready, ret=%d", (int32_t)ret);
         audio_app_voice_request_release();
         return;
     }
@@ -703,11 +750,12 @@ static void audio_app_voice_synthesis_request_handle(
                                       : p_command->voice_repeat_count));
         if (0U == p_command->caption_size) {
             presentation_ret = voice_presentation_app_start(
-                audio_app_voice_text, p_command->voice_text_size);
+                audio_app_voice_text, p_command->voice_text_size,
+                p_command->caption_cycles);
         } else {
-            presentation_ret = voice_presentation_app_start(g_audio_app_caption,
-                                                            p_command
-                                                                ->caption_size);
+            presentation_ret = voice_presentation_app_start(
+                g_audio_app_caption, p_command->caption_size,
+                p_command->caption_cycles);
         }
         if(PLATFORM_ERR_OK != presentation_ret)
         {
@@ -831,8 +879,8 @@ static void audio_app_player_commands_process(
 
 static void audio_app_voice_synthesis_process(void)
 {
-    bsp_voice_synthesis_event_t event;
-    platform_err_t ret;
+    bsp_voice_synthesis_event_t event = BSP_VOICE_SYNTHESIS_EVENT_NONE;
+    platform_err_t              ret   = PLATFORM_ERR_OK;
 
     if(AUDIO_PLAYER_SERVICE_STATE_PLAYING_VOICE_SYNTHESIS !=
        audio_player_service_state_get(&audio_app_player_service))
@@ -843,7 +891,11 @@ static void audio_app_voice_synthesis_process(void)
     ret = audio_player_service_voice_synthesis_process(
         &audio_app_player_service, plat_tick_get_ms(), &event);
     if (PLATFORM_ERR_OK != ret) {
-        plat_log_e("Voice synthesis process failed, ret=%d", (int32_t)ret);
+        if (0U != (event & BSP_VOICE_SYNTHESIS_EVENT_INITIALIZED)) {
+            plat_log_e("Voice synthesis aborted: chip reported initialization during playback");
+        } else {
+            plat_log_e("Voice synthesis process failed, ret=%d", (int32_t)ret);
+        }
         audio_app_voice_presentation_abort();
         audio_app_voice_request_release();
         return;
@@ -1022,10 +1074,20 @@ static void audio_app_player_task(void *p_parameter)
     plat_log_i("Audio player service init ret=%d", (int32_t)ret);
     if(PLATFORM_ERR_OK == ret)
     {
+        const uint32_t voice_rx_start_ms = plat_tick_get_ms();
         ret = audio_app_cs4344_warmup();
         plat_log_i("Audio CS4344 silent warmup %lu ms ret=%d",
                    (unsigned long)AUDIO_APP_CS4344_WARMUP_MS,
                    (int32_t)ret);
+        if (AUDIO_PLAYER_SERVICE_STATE_IDLE ==
+            audio_player_service_state_get(&audio_app_player_service)) {
+            ret = audio_app_voice_ready_wait(voice_rx_start_ms, AUDIO_APP_VOICE_STARTUP_PROBE_MS);
+            if (PLATFORM_ERR_OK == ret) {
+                plat_log_i("Voice synthesis ready: startup reply confirmed");
+            } else {
+                plat_log_w("Voice synthesis startup not confirmed, ret=%d", (int32_t)ret);
+            }
+        }
     }
 
     for(;;)
@@ -1297,6 +1359,7 @@ platform_err_t audio_playback_app_voice_request(
         (0U == p_request->text_size) ||
         (p_request->text_size > AUDIO_PLAYBACK_APP_VOICE_TEXT_MAX_BYTES) ||
         (p_request->caption_size > AUDIO_PLAYBACK_APP_CAPTION_MAX_BYTES) ||
+        (p_request->caption_cycles > HUB_DISPLAY_APP_SCROLL_CYCLES_MAX) ||
         ((0U != p_request->caption_size) &&
          (NULL == p_request->p_caption_gbk)) ||
         (p_request->repeat_count > AUDIO_PLAYER_VOICE_REPEAT_MAX) ||
@@ -1323,6 +1386,7 @@ platform_err_t audio_playback_app_voice_request(
     command.voice_encoding     = p_request->encoding;
     command.voice_text_size    = p_request->text_size;
     command.caption_size       = p_request->caption_size;
+    command.caption_cycles     = p_request->caption_cycles;
     command.voice_repeat_count = p_request->repeat_count;
     if (pdPASS != xQueueSend(audio_app_player_command_queue, &command, 0U)) {
         audio_app_voice_request_release();

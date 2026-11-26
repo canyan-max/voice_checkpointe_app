@@ -28,6 +28,7 @@ typedef struct AUDIO_PLAYBACK_VOICE_REQUEST_T {
     uint8_t                        repeat_count;
     const uint8_t                 *p_caption_gbk;
     uint16_t                       caption_size;
+    uint8_t                        caption_cycles; /* Zero follows audio end. */
 } audio_playback_voice_request_t;
 
 platform_err_t audio_playback_app_init(void);

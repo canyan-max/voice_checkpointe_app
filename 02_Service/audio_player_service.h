@@ -52,6 +52,8 @@ typedef struct AUDIO_PLAYER_SERVICE_T {
     uint32_t sample_rate_hz;
     uint32_t underrun_count;
     uint8_t  half_has_audio[2];
+    uint8_t voice_ready;
+    uint8_t voice_probe_sent;
     audio_player_voice_session_t voice;
     uint16_t dma_samples[AUDIO_PLAYER_DMA_SAMPLE_COUNT];
 } audio_player_service_t;
@@ -71,6 +73,11 @@ platform_err_t audio_player_service_start(
 
 platform_err_t audio_player_service_unmute(
     audio_player_service_t *p_service);
+
+/* Poll readiness while idle. BUSY means no qualifying reply yet.
+ * A nonzero probe_timeout_ms permits one status request on this call. */
+platform_err_t audio_player_service_voice_ready_poll(audio_player_service_t *p_service,
+                                                     uint32_t probe_timeout_ms);
 
 /* Text remains owned by the caller until the whole request ends. */
 platform_err_t audio_player_service_voice_synthesis_start(

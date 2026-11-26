@@ -446,11 +446,9 @@ platform_err_t hub_display_service_stream_process(
 
     if(p_service->next_glyph_index < p_service->glyph_count)
     {
-        if((HUB_DISPLAY_SERVICE_GLYPH_CACHE_COUNT <=
-                p_service->next_glyph_index) &&
-           ((p_service->glyph_phase + 1U) <
-                p_service->next_glyph_index))
-        {
+        /* Moving into the next phase frees the outgoing glyph's cache slot. */
+        if ((HUB_DISPLAY_SERVICE_GLYPH_CACHE_COUNT <= p_service->next_glyph_index) &&
+            (p_service->glyph_phase < p_service->next_glyph_index)) {
             return PLATFORM_ERR_OK;
         }
 
@@ -481,11 +479,10 @@ platform_err_t hub_display_service_stream_process(
     cache_slot = (uint8_t)(p_service->restart_glyph_count %
                             HUB_DISPLAY_SERVICE_GLYPH_CACHE_COUNT);
     cached_glyph_index = p_service->glyph_cache_index[cache_slot];
-    if((HUB_DISPLAY_GLYPH_CACHE_INDEX_INVALID != cached_glyph_index) &&
-       (((uint32_t)cached_glyph_index +
-         HUB_DISPLAY_VISIBLE_SLOT_COUNT) >
-            (uint32_t)p_service->glyph_phase))
-    {
+    /* At equality the old glyph is still scrolling out of the first slot. */
+    if ((HUB_DISPLAY_GLYPH_CACHE_INDEX_INVALID != cached_glyph_index) &&
+        (((uint32_t)cached_glyph_index + HUB_DISPLAY_VISIBLE_SLOT_COUNT) >=
+         (uint32_t)p_service->glyph_phase)) {
         return PLATFORM_ERR_OK;
     }
 

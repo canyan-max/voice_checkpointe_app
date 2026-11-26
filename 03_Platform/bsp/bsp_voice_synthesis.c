@@ -275,6 +275,14 @@ platform_err_t bsp_voice_synthesis_stop(uint32_t timeout_ms)
         vtx316_stop(&vtx316_device, timeout_ms));
 }
 
+platform_err_t bsp_voice_synthesis_status_request(uint32_t timeout_ms) {
+    const platform_err_t ret = bsp_voice_synthesis_ready_check();
+    if (PLATFORM_ERR_OK != ret) {
+        return ret;
+    }
+    return bsp_voice_synthesis_ret_map(vtx316_status_request(&vtx316_device, timeout_ms));
+}
+
 platform_err_t bsp_voice_synthesis_busy_get(uint8_t *p_is_busy)
 {
     if(NULL == p_is_busy)

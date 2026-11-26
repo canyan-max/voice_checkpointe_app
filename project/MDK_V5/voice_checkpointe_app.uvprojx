@@ -808,6 +808,11 @@
               <FilePath>..\..\02_Service\checkpoint_config.c</FilePath>
             </File>
             <File>
+              <FileName>checkpoint_config_storage.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\02_Service\checkpoint_config_storage.c</FilePath>
+            </File>
+            <File>
               <FileName>checkpoint_config.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\02_Service\checkpoint_config.h</FilePath>

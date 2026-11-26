@@ -446,9 +446,19 @@ storage_filesystem_service_ret_t storage_filesystem_service_file_close(void)
         return STORAGE_FILESYSTEM_SERVICE_RET_STATE;
     }
     ret = lfs_file_close(&storage_filesystem, &storage_filesystem_file);
-    if(LFS_ERR_OK == ret)
-    {
-        storage_filesystem_file_opened = 0U;
-    }
+    /* LittleFS releases the handle even when its final sync fails. */
+    storage_filesystem_file_opened = 0U;
     return storage_filesystem_service_ret_from_lfs(ret);
+}
+
+storage_filesystem_service_ret_t storage_filesystem_service_file_replace(const char *p_source,
+                                                                        const char *p_destination) {
+    if ((NULL == p_source) || (NULL == p_destination)) {
+        return STORAGE_FILESYSTEM_SERVICE_RET_PARAM;
+    }
+    if ((0U == storage_filesystem_mounted) || (0U != storage_filesystem_file_opened)) {
+        return STORAGE_FILESYSTEM_SERVICE_RET_STATE;
+    }
+    return storage_filesystem_service_ret_from_lfs(
+        lfs_rename(&storage_filesystem, p_source, p_destination));
 }

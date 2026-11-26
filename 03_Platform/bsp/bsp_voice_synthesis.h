@@ -60,6 +60,9 @@ platform_err_t bsp_voice_synthesis_speak(
 
 platform_err_t bsp_voice_synthesis_stop(uint32_t timeout_ms);
 
+/* Reply is read through bsp_voice_synthesis_poll(). */
+platform_err_t bsp_voice_synthesis_status_request(uint32_t timeout_ms);
+
 platform_err_t bsp_voice_synthesis_busy_get(uint8_t *p_is_busy);
 
 /**
