@@ -1,0 +1,54 @@
+[
+  {
+    "use_new_terminal": false,
+    "shell": {
+      "program": "C:/Program Files/PowerShell/7/pwsh.exe"
+    },
+    "save": "all",
+    "command": "& 'C:/Program Files/PowerShell/7/pwsh.exe' -NoProfile -File \"$ZED_WORKTREE_ROOT/.agents/skills/keil-zed/scripts/keil-zed.ps1\" -Root \"$ZED_WORKTREE_ROOT\" -Action Database -Target 'voice_checkpointe_app'",
+    "label": "Keil: Database [voice_checkpointe_app]",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "allow_concurrent_runs": false,
+    "hide": "never",
+    "reveal": "always"
+  },
+  {
+    "use_new_terminal": false,
+    "shell": {
+      "program": "C:/Program Files/PowerShell/7/pwsh.exe"
+    },
+    "save": "all",
+    "command": "& 'C:/Program Files/PowerShell/7/pwsh.exe' -NoProfile -File \"$ZED_WORKTREE_ROOT/.agents/skills/keil-zed/scripts/keil-zed.ps1\" -Root \"$ZED_WORKTREE_ROOT\" -Action Build -Target 'voice_checkpointe_app'",
+    "label": "Keil: Build [voice_checkpointe_app]",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "allow_concurrent_runs": false,
+    "hide": "never",
+    "reveal": "always"
+  },
+  {
+    "use_new_terminal": false,
+    "shell": {
+      "program": "C:/Program Files/PowerShell/7/pwsh.exe"
+    },
+    "save": "all",
+    "command": "& 'C:/Program Files/PowerShell/7/pwsh.exe' -NoProfile -File \"$ZED_WORKTREE_ROOT/.agents/skills/keil-zed/scripts/keil-zed.ps1\" -Root \"$ZED_WORKTREE_ROOT\" -Action Rebuild -Target 'voice_checkpointe_app'",
+    "label": "Keil: Rebuild [voice_checkpointe_app]",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "allow_concurrent_runs": false,
+    "hide": "never",
+    "reveal": "always"
+  },
+  {
+    "use_new_terminal": false,
+    "shell": {
+      "program": "C:/Program Files/PowerShell/7/pwsh.exe"
+    },
+    "save": "all",
+    "command": "& 'C:/Program Files/PowerShell/7/pwsh.exe' -NoProfile -File \"$ZED_WORKTREE_ROOT/.agents/skills/keil-zed/scripts/keil-zed.ps1\" -Root \"$ZED_WORKTREE_ROOT\" -Action Flash -Target 'voice_checkpointe_app'",
+    "label": "Keil: Flash [voice_checkpointe_app]",
+    "cwd": "$ZED_WORKTREE_ROOT",
+    "allow_concurrent_runs": false,
+    "hide": "never",
+    "reveal": "always"
+  }
+]

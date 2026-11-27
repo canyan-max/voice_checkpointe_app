@@ -12,6 +12,9 @@ platform_err_t bsp_rs485_poll(uint8_t *p_data,
                               uint16_t capacity,
                               uint16_t *p_size);
 
+/* Snapshot incoming byte progress, including bytes not yet readable by poll. */
+platform_err_t bsp_rs485_get_rx_progress(uint16_t *p_progress);
+
 /* Switch to TX, send through UART completion, then restore RX even on error. */
 platform_err_t bsp_rs485_send(const uint8_t *p_data,
                               uint16_t size,

@@ -21,43 +21,44 @@
 /* variables ----------------------------------------------------------------*/
 static vtx316_device_t vtx316_device;
 static uint8_t vtx316_is_initialized;
+static bsp_voice_synthesis_tx_sync_t s_voice_tx_sync;
 
 /* private functions --------------------------------------------------------*/
-static vtx316_ret_t bsp_voice_synthesis_uart_transmit(
-    void          *p_context,
-    const uint8_t *p_header,
-    uint16_t       header_size,
-    const uint8_t *p_payload,
-    uint16_t       payload_size,
-    uint32_t       timeout_ms)
-{
-    platform_err_t ret;
+static void bsp_voice_synthesis_uart_tx_done(plat_uart_id_t id) {
+    if (BOARD_UART_VTX316 == id) {
+        s_voice_tx_sync.pf_signal_from_isr();
+    }
+}
 
+static vtx316_ret_t bsp_voice_synthesis_uart_transmit(void          *p_context,
+                                                      const uint8_t *p_header,
+                                                      uint16_t       header_size,
+                                                      const uint8_t *p_payload,
+                                                      uint16_t       payload_size,
+                                                      uint32_t       timeout_ms) {
     (void)p_context;
-    if((NULL == p_header) || (0U == header_size) || (0U == timeout_ms) ||
-       ((payload_size > 0U) && (NULL == p_payload)))
-    {
+    if (0U == timeout_ms) {
         return VTX316_RET_PARAM;
     }
 
-    ret = plat_uart_send(BOARD_UART_VTX316,
-                         p_header,
-                         header_size,
-                         timeout_ms);
-    if(PLATFORM_ERR_OK == ret && payload_size > 0U)
-    {
-        ret = plat_uart_send(BOARD_UART_VTX316,
-                             p_payload,
-                             payload_size,
-                             timeout_ms);
+    /* Discard a completion that raced the previous wait's timeout. */
+    (void)s_voice_tx_sync.pf_take(0U);
+    const platform_err_t ret = plat_uart_send_parts_it(BOARD_UART_VTX316, p_header, header_size,
+                                                       p_payload, payload_size,
+                                                       bsp_voice_synthesis_uart_tx_done);
+    if (PLATFORM_ERR_OK != ret) {
+        if (PLATFORM_ERR_PARAM == ret) {
+            return VTX316_RET_PARAM;
+        }
+        return (PLATFORM_ERR_BUSY == ret) ? VTX316_RET_BUSY : VTX316_RET_IO;
     }
 
-    if(PLATFORM_ERR_OK == ret)
-    {
+    /* The component's stack header must stay alive until completion or abort. */
+    if (0U != s_voice_tx_sync.pf_take(timeout_ms)) {
         return VTX316_RET_OK;
     }
-    return (PLATFORM_ERR_TIMEOUT == ret) ?
-           VTX316_RET_TIMEOUT : VTX316_RET_IO;
+    return (PLATFORM_ERR_OK == plat_uart_send_it_abort(BOARD_UART_VTX316)) ? VTX316_RET_TIMEOUT
+                                                                           : VTX316_RET_IO;
 }
 
 static vtx316_ret_t bsp_voice_synthesis_busy_read(void    *p_context,
@@ -196,31 +197,28 @@ static bsp_voice_synthesis_state_t bsp_voice_synthesis_state_map(
 }
 
 /* exported functions -------------------------------------------------------*/
-platform_err_t bsp_voice_synthesis_init(void)
-{
-    static const vtx316_io_t io =
-    {
-        bsp_voice_synthesis_uart_transmit,
-        bsp_voice_synthesis_busy_read,
-        NULL
-    };
-    vtx316_ret_t ret;
-    platform_err_t plat_ret;
+platform_err_t bsp_voice_synthesis_init(const bsp_voice_synthesis_tx_sync_t *p_tx_sync) {
+    static const vtx316_io_t io = {bsp_voice_synthesis_uart_transmit, bsp_voice_synthesis_busy_read,
+                                   NULL};
+    vtx316_ret_t             ret;
+    platform_err_t           plat_ret;
 
-    if(0U != vtx316_is_initialized)
-    {
+    if ((NULL == p_tx_sync) || (NULL == p_tx_sync->pf_take) ||
+        (NULL == p_tx_sync->pf_signal_from_isr)) {
+        return PLATFORM_ERR_PARAM;
+    }
+    if (0U != vtx316_is_initialized) {
         return PLATFORM_ERR_OK;
     }
 
     plat_ret = plat_uart_receive_start(BOARD_UART_VTX316);
-    if(PLATFORM_ERR_OK != plat_ret)
-    {
+    if (PLATFORM_ERR_OK != plat_ret) {
         return plat_ret;
     }
 
     ret = vtx316_init(&vtx316_device, &io);
-    if(VTX316_RET_OK == ret)
-    {
+    if (VTX316_RET_OK == ret) {
+        s_voice_tx_sync       = *p_tx_sync;
         vtx316_is_initialized = 1U;
     }
     return bsp_voice_synthesis_ret_map(ret);

@@ -44,6 +44,13 @@
 *.txt
 *.json
 
+# Zed 项目配置可共享，本机数据库和运行文件保持忽略
+!/.zed/settings.json
+!/.zed/tasks.json
+/.zed/keil.lock
+/.zed/logs/
+/.cache/
+
 # MCU资源分配表属于项目文档，必须纳入版本管理
 !99_Doc/voice_checkpoint_resouce_map.xlsx
 

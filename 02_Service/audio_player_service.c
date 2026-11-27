@@ -57,34 +57,28 @@ static platform_err_t audio_player_service_half_write(
     return PLATFORM_ERR_OK;
 }
 
-platform_err_t audio_player_service_init(
-    audio_player_service_t *p_service,
-    bsp_audio_output_cb_t    output_callback)
-{
+platform_err_t audio_player_service_init(audio_player_service_t              *p_service,
+                                         bsp_audio_output_cb_t                output_callback,
+                                         const bsp_voice_synthesis_tx_sync_t *p_voice_tx_sync) {
     platform_err_t ret;
 
-    if(NULL == p_service)
-    {
+    if ((NULL == p_service) || (NULL == p_voice_tx_sync)) {
         return PLATFORM_ERR_PARAM;
     }
 
     memset(p_service, 0, sizeof(*p_service));
     ret = bsp_audio_output_set_callback(output_callback);
-    if(PLATFORM_ERR_OK == ret)
-    {
+    if (PLATFORM_ERR_OK == ret) {
         ret = bsp_audio_amplifier_init();
     }
-    if(PLATFORM_ERR_OK == ret)
-    {
+    if (PLATFORM_ERR_OK == ret) {
         ret = bsp_audio_amplifier_enable();
     }
-    if(PLATFORM_ERR_OK == ret)
-    {
-        ret = bsp_voice_synthesis_init();
+    if (PLATFORM_ERR_OK == ret) {
+        ret = bsp_voice_synthesis_init(p_voice_tx_sync);
     }
-    p_service->state = (PLATFORM_ERR_OK == ret) ?
-                       AUDIO_PLAYER_SERVICE_STATE_IDLE :
-                       AUDIO_PLAYER_SERVICE_STATE_ERROR;
+    p_service->state = (PLATFORM_ERR_OK == ret) ? AUDIO_PLAYER_SERVICE_STATE_IDLE
+                                                : AUDIO_PLAYER_SERVICE_STATE_ERROR;
     return ret;
 }
 

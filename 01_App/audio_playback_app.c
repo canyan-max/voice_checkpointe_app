@@ -11,6 +11,7 @@
 #include <string.h>
 #include "FreeRTOS.h"
 #include "queue.h"
+#include "semphr.h"
 #include "task.h"
 #include "ff.h"
 #include "audio_playback_app.h"
@@ -128,6 +129,9 @@ static QueueHandle_t audio_app_free_queue;
 static QueueHandle_t audio_app_ready_queue;
 static QueueHandle_t audio_app_player_command_queue;
 static QueueHandle_t audio_app_decode_command_queue;
+/* Dedicated to voice TX so waiting never consumes the player's other notifications. */
+static StaticSemaphore_t s_audio_app_voice_tx_control;
+static SemaphoreHandle_t p_audio_app_voice_tx_done;
 static TaskHandle_t  audio_app_player_task_handle;
 static TaskHandle_t  audio_app_decoder_task_handle;
 static volatile uint8_t audio_app_ignore_output_events;
@@ -1060,8 +1064,24 @@ static void audio_app_decoder_completion_process(uint32_t notify_bits,
                (unsigned long)finished_session);
 }
 
+static uint8_t audio_app_voice_tx_take(uint32_t timeout_ms) {
+    return (pdPASS == xSemaphoreTake(p_audio_app_voice_tx_done, pdMS_TO_TICKS(timeout_ms))) ? 1U
+                                                                                            : 0U;
+}
+
+static void audio_app_voice_tx_signal_from_isr(void) {
+    BaseType_t higher_priority_task_woken = pdFALSE;
+    if (pdPASS == xSemaphoreGiveFromISR(p_audio_app_voice_tx_done, &higher_priority_task_woken)) {
+        portYIELD_FROM_ISR(higher_priority_task_woken);
+    }
+}
+
 static void audio_app_player_task(void *p_parameter)
 {
+    static const bsp_voice_synthesis_tx_sync_t s_voice_tx_sync = {
+        .pf_take            = audio_app_voice_tx_take,
+        .pf_signal_from_isr = audio_app_voice_tx_signal_from_isr,
+    };
     audio_app_player_runtime_t runtime = {0};
     audio_player_service_state_t player_state;
     platform_err_t ret;
@@ -1070,7 +1090,8 @@ static void audio_app_player_task(void *p_parameter)
 
     (void)p_parameter;
     ret = audio_player_service_init(&audio_app_player_service,
-                                    audio_app_output_callback);
+                                    audio_app_output_callback,
+                                    &s_voice_tx_sync);
     plat_log_i("Audio player service init ret=%d", (int32_t)ret);
     if(PLATFORM_ERR_OK == ret)
     {
@@ -1258,10 +1279,12 @@ platform_err_t audio_playback_app_init(void)
         sizeof(audio_app_decode_command_t),
         audio_app_decode_command_queue_storage,
         &audio_app_decode_command_queue_control);
+    p_audio_app_voice_tx_done = xSemaphoreCreateBinaryStatic(&s_audio_app_voice_tx_control);
 
     if((NULL == audio_app_free_queue) || (NULL == audio_app_ready_queue) ||
        (NULL == audio_app_player_command_queue) ||
-       (NULL == audio_app_decode_command_queue))
+       (NULL == audio_app_decode_command_queue) ||
+       (NULL == p_audio_app_voice_tx_done))
     {
         return PLATFORM_ERR_HW;
     }

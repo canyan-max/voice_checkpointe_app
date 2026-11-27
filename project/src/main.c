@@ -86,7 +86,10 @@
 int main(void)
 {
   /* add user code begin 1 */
-
+  /* Match Keil IROM1 at 0x08008000; SystemInit sets VTOR to the Flash base. */
+  nvic_vector_table_set(NVIC_VECTTAB_FLASH, 0x8000U);
+  __DSB();
+  __ISB();
   /* add user code end 1 */
 
   /* system clock config. */

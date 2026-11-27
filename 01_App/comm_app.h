@@ -31,6 +31,8 @@ typedef struct COMM_APP_IO_T {
     platform_err_t (*pf_send)(const uint8_t *p_data,
                               uint16_t       size,
                               uint32_t       timeout_ms);
+    /* Opaque progress token including bytes not yet returned by pf_receive. */
+    platform_err_t (*pf_get_rx_progress)(uint16_t *p_progress);
 } comm_app_io_t;
 
 /* Synchronous callbacks on the COMM task. Do not block. The payload is

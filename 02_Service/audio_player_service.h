@@ -58,9 +58,9 @@ typedef struct AUDIO_PLAYER_SERVICE_T {
     uint16_t dma_samples[AUDIO_PLAYER_DMA_SAMPLE_COUNT];
 } audio_player_service_t;
 
-platform_err_t audio_player_service_init(
-    audio_player_service_t  *p_service,
-    bsp_audio_output_cb_t     output_callback);
+platform_err_t audio_player_service_init(audio_player_service_t              *p_service,
+                                         bsp_audio_output_cb_t                output_callback,
+                                         const bsp_voice_synthesis_tx_sync_t *p_voice_tx_sync);
 
 platform_err_t audio_player_service_prepare(
     audio_player_service_t *p_service,

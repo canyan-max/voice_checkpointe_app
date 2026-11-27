@@ -82,6 +82,9 @@ uint8_t proto_checkpoint_init(proto_checkpoint_parser_t *p_parser,
 /* Call after a receive error or a confirmed gap that ends a partial frame. */
 void proto_checkpoint_reset(proto_checkpoint_parser_t *p_parser);
 
+/* Bytes collected for the in-progress frame, including its header; zero if idle. */
+uint32_t proto_checkpoint_partial_size(const proto_checkpoint_parser_t *p_parser);
+
 /* FRAME exposes a borrowed payload, valid until the next feed or reset.
  * BAD_CHECKSUM exposes the addressed request's ID and command for a reply.
  * Its payload is unavailable and must not be processed.

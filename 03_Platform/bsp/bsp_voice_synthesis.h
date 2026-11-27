@@ -49,8 +49,17 @@ typedef enum BSP_VOICE_SYNTHESIS_STATE_T
     BSP_VOICE_SYNTHESIS_STATE_ERROR
 } bsp_voice_synthesis_state_t;
 
+/* Supplied by the sole calling task; BSP does not own the wait primitive. */
+typedef struct BSP_VOICE_SYNTHESIS_TX_SYNC_T {
+    /* Consume a completion signal; 0 ms checks without waiting. */
+    uint8_t (*pf_take)(uint32_t timeout_ms);
+    /* Publish a completion from UART interrupt context. */
+    void (*pf_signal_from_isr)(void);
+} bsp_voice_synthesis_tx_sync_t;
+
 /* functions ----------------------------------------------------------------*/
-platform_err_t bsp_voice_synthesis_init(void);
+/* The hooks are copied. All voice operations must run on the same task. */
+platform_err_t bsp_voice_synthesis_init(const bsp_voice_synthesis_tx_sync_t *p_tx_sync);
 
 platform_err_t bsp_voice_synthesis_speak(
     bsp_voice_synthesis_encoding_t encoding,

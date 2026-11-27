@@ -155,6 +155,30 @@ void proto_checkpoint_reset(proto_checkpoint_parser_t *p_parser) {
     }
 }
 
+uint32_t proto_checkpoint_partial_size(const proto_checkpoint_parser_t *p_parser) {
+    if (NULL == p_parser) {
+        return 0U;
+    }
+
+    switch ((receive_state_t)p_parser->state) {
+        case RECEIVE_COMMAND:
+            return 1U;
+        case RECEIVE_LENGTH_HIGH:
+            return 2U;
+        case RECEIVE_LENGTH_LOW:
+            return 3U;
+        case RECEIVE_PAYLOAD:
+        case RECEIVE_SUM_HIGH:
+            return 4U + p_parser->received;
+        case RECEIVE_SUM_LOW:
+            return 5U + p_parser->received;
+        case RECEIVE_TAIL:
+            return 6U + p_parser->received;
+        default:
+            return 0U;
+    }
+}
+
 proto_checkpoint_result_t
 proto_checkpoint_feed(proto_checkpoint_parser_t  *p_parser,
                       uint8_t                     byte,

@@ -281,6 +281,7 @@ void EXINT9_5_IRQHandler(void)
 void USART1_IRQHandler(void)
 {
   /* add user code begin USART1_IRQ 0 */
+  plat_uart_tx_irq_handler(BOARD_UART_RS485);
   plat_uart_rx_irq_handler(BOARD_UART_RS485);
   /* add user code end USART1_IRQ 0 */
 
@@ -305,6 +306,7 @@ void USART1_IRQHandler(void)
 void USART2_IRQHandler(void)
 {
   /* add user code begin USART2_IRQ 0 */
+  plat_uart_tx_irq_handler(BOARD_UART_REMOTE_4G);
   plat_uart_rx_irq_handler(BOARD_UART_REMOTE_4G);
   /* add user code end USART2_IRQ 0 */
 
@@ -329,6 +331,7 @@ void USART2_IRQHandler(void)
 void USART3_IRQHandler(void)
 {
   /* add user code begin USART3_IRQ 0 */
+  plat_uart_tx_irq_handler(BOARD_UART_VTX316);
   plat_uart_rx_irq_handler(BOARD_UART_VTX316);
   /* add user code end USART3_IRQ 0 */
 

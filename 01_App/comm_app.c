@@ -201,23 +201,35 @@ static void comm_task(void *p_parameter) {
     uint8_t rx[COMM_RX_CHUNK];
     (void)p_parameter;
 
-    plat_log_i("COMM ready: id=%02X",
-               (unsigned int)g_comm_parser.device_id);
-    uint32_t last_rx_ms = plat_tick_get_ms();
+    plat_log_i("COMM ready: id=%02X", (unsigned int)g_comm_parser.device_id);
+    uint32_t last_activity_ms = plat_tick_get_ms();
+    uint16_t last_progress    = 0U;
     for (;;) {
-        uint16_t       size   = 0U;
-        platform_err_t ret    = g_comm_io.pf_receive(rx, sizeof(rx), &size);
-        uint32_t       now_ms = plat_tick_get_ms();
+        uint16_t       size     = 0U;
+        uint16_t       progress = 0U;
+        platform_err_t ret      = g_comm_io.pf_receive(rx, sizeof(rx), &size);
+        if (PLATFORM_ERR_OK == ret) {
+            ret = g_comm_io.pf_get_rx_progress(&progress);
+        }
+        const uint32_t now_ms = plat_tick_get_ms();
 
         if (PLATFORM_ERR_OK != ret) {
             proto_checkpoint_reset(&g_comm_parser);
             plat_log_w("COMM RX discarded: ret=%d", (int)ret);
         } else {
-            if (COMM_RX_GAP_MS <= (uint32_t)(now_ms - last_rx_ms)) {
-                proto_checkpoint_reset(&g_comm_parser);
+            const uint32_t gap_ms = (uint32_t)(now_ms - last_activity_ms);
+            if ((0U != size) || (last_progress != progress)) {
+                last_activity_ms = now_ms;
+            } else if (COMM_RX_GAP_MS <= gap_ms) {
+                const uint32_t partial_bytes = proto_checkpoint_partial_size(&g_comm_parser);
+                if (0U != partial_bytes) {
+                    proto_checkpoint_reset(&g_comm_parser);
+                    plat_log_w("COMM RX partial timeout: bytes=%lu gap=%lu ms",
+                               (unsigned long)partial_bytes, (unsigned long)gap_ms);
+                }
             }
+            last_progress = progress;
             if (0U != size) {
-                last_rx_ms = now_ms;
                 comm_feed_bytes(rx, size);
             }
         }
@@ -235,6 +247,7 @@ platform_err_t comm_app_init(const comm_app_io_t      *p_io,
                              uint8_t initial_device_id) {
     if ((NULL == p_io) || (NULL == p_io->pf_init) ||
         (NULL == p_io->pf_receive) || (NULL == p_io->pf_send) ||
+        (NULL == p_io->pf_get_rx_progress) ||
         (NULL == p_actions) || (NULL == p_actions->pf_voice_set) ||
         (NULL == p_actions->pf_voice_repeat_set) ||
         (NULL == p_actions->pf_display_repeat_set) ||

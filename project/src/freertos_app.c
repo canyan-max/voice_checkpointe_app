@@ -27,10 +27,9 @@
 #include "checkpoint_config.h"
 #include "checkpoint_config_storage.h"
 #include "proto_checkpoint.h"
-#include "fatfs_disk.h"
-#include <string.h>
-#include "usb_core.h"
-#include "usbh_msc_class.h"
+#include "semphr.h"
+#include "firmware_upgrade_app.h"
+#include "usb_upgrade_port.h"
 /* add user code end private includes */
 
 /* private typedef -----------------------------------------------------------*/
@@ -45,9 +44,10 @@
 #define START_TEST_KEY_DEBOUNCE_MS         30U
 #define START_TEST_KEY_LONG_PRESS_MS     1000U
 #define START_TEST_KEY_DOUBLE_CLICK_MS    300U
-#define START_TEST_BUTTON_COUNT             4U
+#define START_TEST_BUTTON_COUNT             3U
 #define START_TEST_VOLUME_STEP              5U
 #define START_TEST_I2C_TIMEOUT_MS          100U
+#define START_TEST_4G_ENABLED               (0U)
 
 #define CHECKPOINT_FLASH_TIMEOUT_MS         (100U)
 #define CHECKPOINT_SAVE_QUIET_MS            (250U)
@@ -67,6 +67,8 @@
 /* Bound to the COMM task at startup; callbacks are its only runtime callers. */
 static checkpoint_config_t s_checkpoint_config;
 static uint8_t s_checkpoint_storage_ready;
+static StaticSemaphore_t s_qspi_lock_storage;
+static SemaphoreHandle_t p_qspi_lock;
 static uint8_t s_checkpoint_save_pending;
 static uint32_t s_checkpoint_save_since_ms;
 static uint32_t s_checkpoint_save_wait_ms;
@@ -149,7 +151,12 @@ static void checkpoint_comm_config_poll(void *p_context)
     return;
   }
 
+  if (NULL == p_qspi_lock || pdTRUE != xSemaphoreTake(p_qspi_lock, 0U))
+  {
+    return;
+  }
   const storage_filesystem_service_ret_t ret = checkpoint_config_storage_save(p_config);
+  (void)xSemaphoreGive(p_qspi_lock);
   const uint32_t done_ms = plat_tick_get_ms();
   if(STORAGE_FILESYSTEM_SERVICE_RET_OK == ret)
   {
@@ -361,246 +368,14 @@ static void gpio_irq_test_poll(void)
   }
 }
 
-/* Temporary board test. USB host polling and file I/O share this task. */
-extern otg_core_type otg_core_struct_fs2;
-extern disk_driver_type usbh_msc_disk;
-static FATFS usb_test_fs;
-static DIR usb_test_dir;
-static FIL usb_test_file;
-static FILINFO usb_test_info;
-static TCHAR usb_test_path[FF_MAX_LFN + 4U];
-static uint8_t usb_test_data[128];
-static char usb_test_name[96];
-
-/* UTF-16 names to bounded UTF-8 for the UART log. */
-static void usb_test_name_log(const TCHAR *name)
+static uint8_t checkpoint_qspi_try_lock(void)
 {
-  unsigned int in = 0U, out = 0U;
-  while(name[in] != 0 && out + 4U < sizeof(usb_test_name))
-  {
-    uint32_t c = (uint32_t)name[in++];
-    if(c >= 0xD800U && c <= 0xDFFFU) c = '?';
-    if(c < 0x80U)
-      usb_test_name[out++] = (char)((c < 0x20U || c == 0x7FU) ? '?' : c);
-    else if(c < 0x800U)
-    {
-      usb_test_name[out++] = (char)(0xC0U | (c >> 6));
-      usb_test_name[out++] = (char)(0x80U | (c & 0x3FU));
-    }
-    else
-    {
-      usb_test_name[out++] = (char)(0xE0U | (c >> 12));
-      usb_test_name[out++] = (char)(0x80U | ((c >> 6) & 0x3FU));
-      usb_test_name[out++] = (char)(0x80U | (c & 0x3FU));
-    }
-  }
-  if(name[in] != 0) usb_test_name[out++] = '~';
-  usb_test_name[out] = 0;
+  return NULL != p_qspi_lock && pdTRUE == xSemaphoreTake(p_qspi_lock, 0U);
 }
 
-
-/* Create a new file; never truncate an existing USB file. */
-static uint8_t usb_test_write_verify(void)
+static void checkpoint_qspi_unlock(void)
 {
-  static const char content[] =
-      "Voice checkpoint USB write test.\r\n"
-      "SD=0, USB=1. Write and read-back verification.\r\n";
-  static TCHAR path[] = _T("1:/usb_test_00.txt");
-  FRESULT result, sync_result, close_result;
-  UINT written = 0U, received = 0U;
-  unsigned int index;
-  uint8_t match;
-  for(index = 0U; index < 100U; index++)
-  {
-    path[12] = (TCHAR)('0' + index / 10U);
-    path[13] = (TCHAR)('0' + index % 10U);
-    result = f_open(&usb_test_file, path, FA_WRITE | FA_CREATE_NEW);
-    if(result != FR_EXIST) break;
-  }
-  if(index == 100U)
-  {
-    plat_log_w("USB_TEST write skipped: usb_test_00..99.txt already exist");
-    return 0U;
-  }
-  usb_test_name_log(path);
-  plat_log_i("USB_TEST create %s ret=%u", usb_test_name, (unsigned int)result);
-  if(result != FR_OK) return 0U;
-  result = f_write(&usb_test_file, content, sizeof(content) - 1U, &written);
-  sync_result = (result == FR_OK && written == sizeof(content) - 1U) ?
-      f_sync(&usb_test_file) : FR_DISK_ERR;
-  close_result = f_close(&usb_test_file);
-  plat_log_i("USB_TEST write ret=%u bytes=%u expected=%u sync=%u close=%u",
-      (unsigned int)result, (unsigned int)written,
-      (unsigned int)(sizeof(content) - 1U),
-      (unsigned int)sync_result, (unsigned int)close_result);
-  if(result != FR_OK || written != sizeof(content) - 1U ||
-     sync_result != FR_OK || close_result != FR_OK)
-    return 0U;
-  result = f_open(&usb_test_file, path, FA_READ);
-  plat_log_i("USB_TEST reopen ret=%u", (unsigned int)result);
-  if(result != FR_OK) return 0U;
-  match = (uint8_t)(f_size(&usb_test_file) == sizeof(content) - 1U);
-  result = f_read(&usb_test_file, usb_test_data, sizeof(usb_test_data), &received);
-  close_result = f_close(&usb_test_file);
-  match = (uint8_t)(match && result == FR_OK && close_result == FR_OK &&
-      received == sizeof(content) - 1U &&
-      memcmp(usb_test_data, content, sizeof(content) - 1U) == 0);
-  plat_log_i("USB_TEST verify ret=%u bytes=%u close=%u match=%u",
-      (unsigned int)result, (unsigned int)received,
-      (unsigned int)close_result, (unsigned int)match);
-  if(match)
-  {
-    usb_test_data[received] = 0U;
-    plat_log_i("USB_TEST TXT content: %s", (char *)usb_test_data);
-  }
-  return match;
-}
-
-static void usb_test_run(void)
-{
-  FRESULT result, close_result;
-  UINT bytes = 0U;
-  uint32_t started = plat_tick_get_ms();
-  unsigned int entries = 0U, i, j;
-  uint8_t have_file = 0U, dir_open = 0U, read_ok = 0U;
-  uint8_t list_ok = 0U, write_ok = 0U;
-  char hex[49], ascii[17];
-  static const char digits[] = "0123456789ABCDEF";
-  usb_test_path[0] = 0;
-  fatfs_disk.is_initialized[1] = 0U;
-  plat_log_i("USB_TEST ready: drive=1:/ blocks=%lu sector=%lu",
-      (unsigned long)usbh_msc.l_unit_n[0].capacity.blk_nbr,
-      (unsigned long)usbh_msc.l_unit_n[0].capacity.blk_size);
-  if(usbh_msc.l_unit_n[0].capacity.blk_size != 512U)
-  {
-    plat_log_e("USB_TEST unsupported sector size (requires 512)");
-    return;
-  }
-  result = f_mount(&usb_test_fs, _T("1:"), 1U);
-  plat_log_i("USB_TEST mount ret=%u", (unsigned int)result);
-  if(result != FR_OK) goto cleanup;
-  result = f_opendir(&usb_test_dir, _T("1:/"));
-  if(result != FR_OK)
-  {
-    plat_log_e("USB_TEST opendir ret=%u", (unsigned int)result);
-    goto cleanup;
-  }
-  dir_open = 1U;
-  while(entries < 32U)
-  {
-    if(otg_core_struct_fs2.host.conn_sts == 0U ||
-       (uint32_t)(plat_tick_get_ms() - started) >= 5000U)
-    {
-      plat_log_w("USB_TEST listing stopped: disconnect or 5s limit");
-      goto cleanup;
-    }
-    result = f_readdir(&usb_test_dir, &usb_test_info);
-    if(result != FR_OK)
-    {
-      plat_log_e("USB_TEST readdir ret=%u", (unsigned int)result);
-      goto cleanup;
-    }
-    if(usb_test_info.fname[0] == 0) break;
-    entries++;
-    usb_test_name_log(usb_test_info.fname);
-    plat_log_i("USB_TEST %s %s size=%lu",
-        (usb_test_info.fattrib & AM_DIR) ? "DIR" : "FILE",
-        usb_test_name, (unsigned long)usb_test_info.fsize);
-    if(!have_file && !(usb_test_info.fattrib & AM_DIR))
-    {
-      usb_test_path[0] = '1'; usb_test_path[1] = ':';
-      usb_test_path[2] = '/';
-      for(i = 0U; i < FF_MAX_LFN && usb_test_info.fname[i] != 0; i++)
-        usb_test_path[i + 3U] = usb_test_info.fname[i];
-      usb_test_path[i + 3U] = 0;
-      have_file = 1U;
-    }
-    vTaskDelay(pdMS_TO_TICKS(1U));
-  }
-  list_ok = 1U;
-  plat_log_i("USB_TEST root entries=%u%s", entries,
-      entries == 32U ? " (limit reached)" : "");
-  close_result = f_closedir(&usb_test_dir);
-  dir_open = 0U;
-  if(close_result != FR_OK)
-  {
-    plat_log_e("USB_TEST closedir ret=%u", (unsigned int)close_result);
-    goto cleanup;
-  }
-  if(!have_file)
-  {
-    plat_log_w("USB_TEST no root file to preview");
-    goto write_test;
-  }
-  if(otg_core_struct_fs2.host.conn_sts == 0U) goto cleanup;
-  usb_test_name_log(usb_test_path);
-  result = f_open(&usb_test_file, usb_test_path, FA_READ);
-  plat_log_i("USB_TEST open %s ret=%u", usb_test_name, (unsigned int)result);
-  if(result != FR_OK) goto cleanup;
-  result = f_read(&usb_test_file, usb_test_data, sizeof(usb_test_data), &bytes);
-  plat_log_i("USB_TEST read ret=%u bytes=%u", (unsigned int)result, (unsigned int)bytes);
-  close_result = f_close(&usb_test_file);
-  if(close_result != FR_OK)
-    plat_log_e("USB_TEST close ret=%u", (unsigned int)close_result);
-  if(result != FR_OK || close_result != FR_OK || bytes > sizeof(usb_test_data))
-    goto cleanup;
-  read_ok = 1U;
-  for(i = 0U; i < bytes; i += 16U)
-  {
-    for(j = 0U; j < 16U && i + j < bytes; j++)
-    {
-      uint8_t c = usb_test_data[i + j];
-      hex[j * 3U] = digits[c >> 4];
-      hex[j * 3U + 1U] = digits[c & 15U];
-      hex[j * 3U + 2U] = ' ';
-      ascii[j] = (c >= 32U && c < 127U) ? (char)c : '.';
-    }
-    hex[j * 3U] = 0; ascii[j] = 0;
-    plat_log_i("USB_TEST %03u: %s |%s|", i, hex, ascii);
-  }
-write_test:
-  if(otg_core_struct_fs2.host.conn_sts != 0U)
-    write_ok = usb_test_write_verify();
-cleanup:
-  if(dir_open) (void)f_closedir(&usb_test_dir);
-  close_result = f_mount(NULL, _T("1:"), 0U);
-  fatfs_disk.is_initialized[1] = 0U;
-  plat_log_i("USB_TEST done: list_ok=%u read_ok=%u write_ok=%u unmount=%u stack_free=%lu words",
-      (unsigned int)list_ok, (unsigned int)read_ok, (unsigned int)write_ok,
-      (unsigned int)close_result,
-      (unsigned long)uxTaskGetStackHighWaterMark(NULL));
-}
-
-static void usb_test_poll(void)
-{
-  static uint8_t connected = 0U, tested = 0U;
-  usbh_core_type *host = &otg_core_struct_fs2.host;
-  if(host->conn_sts == 0U)
-  {
-    if(connected) plat_log_i("USB_TEST disconnected; reinsert to repeat");
-    connected = 0U;
-    tested = 0U;
-    fatfs_disk.is_initialized[1] = 0U;
-    return;
-  }
-  if(!connected)
-  {
-    connected = 1U;
-    plat_log_i("USB_TEST attached, waiting for MSC ready");
-  }
-  if(tested || host->global_state != USBH_CLASS ||
-     host->class_handler == NULL || host->class_handler->pdata == NULL ||
-     usbh_msc.state != USBH_MSC_IDLE ||
-     usbh_msc.l_unit_n[0].state != USBH_MSC_IDLE ||
-     usbh_msc_is_ready(host, 0U) != MSC_OK)
-    return;
-  tested = 1U;
-  if(fatfs_disk.disk[1] != &usbh_msc_disk || fatfs_disk.lun[1] != 0U)
-  {
-    plat_log_e("USB_TEST drive 1 not registered as USB LUN0");
-    return;
-  }
-  usb_test_run();
+  (void)xSemaphoreGive(p_qspi_lock);
 }
 
 /* add user code end 0 */
@@ -739,7 +514,6 @@ void start_or_test_f(void *pvParameters)
   platform_err_t log_ret;
   platform_err_t app_ret;
   platform_err_t gpio_ret;
-  platform_err_t play_ret;
   platform_err_t presentation_ret;
   platform_err_t volume_ret;
   button_status_t button_ret;
@@ -757,8 +531,7 @@ void start_or_test_f(void *pvParameters)
   {
     BOARD_GPIO_KEY1,
     BOARD_GPIO_KEY2,
-    BOARD_GPIO_KEY3,
-    BOARD_GPIO_KEY4
+    BOARD_GPIO_KEY3
   };
   static const button_timing_t button_timing =
   {
@@ -766,20 +539,10 @@ void start_or_test_f(void *pvParameters)
     START_TEST_KEY_LONG_PRESS_MS,
     START_TEST_KEY_DOUBLE_CLICK_MS
   };
-  static const uint8_t voice_synthesis_test_text[] =
-  {
-    0xD7U, 0xA2U, 0xD2U, 0xE2U, 0xB0U, 0xB2U, 0xC8U, 0xABU
-  };
+#if START_TEST_4G_ENABLED
   /* Temporary input: future RS485 supplies this ID through the same App API. */
   static const uint8_t remote_modem_test_id[] = "kvt9dxr84qrryr1z";
-  static const uint8_t volume_decrease_prompt[] =
-  {
-    0xD2U, 0xF4U, 0xC1U, 0xBFU, 0xBCU, 0xF5U, 0xD0U, 0xA1U
-  };
-  static const uint8_t volume_increase_prompt[] =
-  {
-    0xD2U, 0xF4U, 0xC1U, 0xBFU, 0xD4U, 0xF6U, 0xBCU, 0xD3U
-  };
+#endif
   (void)pvParameters;
 
   /* add user code end start_or_test_f 0 */
@@ -787,11 +550,25 @@ void start_or_test_f(void *pvParameters)
   /* add user code begin start_or_test_f 2 */
   log_ret = plat_log_init();
   gpio_irq_test_init();
+  p_qspi_lock = xSemaphoreCreateMutexStatic(&s_qspi_lock_storage);
+  if (NULL == p_qspi_lock)
+  {
+    plat_log_e("QSPI lock unavailable");
+  }
   checkpoint_storage_init();
+  if (0U != s_checkpoint_storage_ready && NULL != p_qspi_lock)
+  {
+    const firmware_upgrade_lock_t upgrade_lock =
+    {
+      .pf_try_lock = checkpoint_qspi_try_lock,
+      .pf_unlock = checkpoint_qspi_unlock
+    };
+    firmware_upgrade_app_init(&upgrade_lock);
+  }
   plat_log_i("TF_CD_TEST app init ret=%d, debounce=50 ms",
              (int)sd_card_presence_app_init());
   sd_card_presence_app_poll();
-  plat_log_i("USB_TEST enabled: FAT32 drive=1:/, root max=32, first file preview=128 bytes, TXT write+verify");
+  plat_log_i("USB_OTA enabled: FAT32 UPDATE.BIN -> QSPI, SW2=start");
   plat_log_i("Audio MP3 application start, log_init=%d", (int32_t)log_ret);
   volume_ret = audio_volume_service_init(&volume_service,
                                          START_TEST_I2C_TIMEOUT_MS);
@@ -812,7 +589,13 @@ void start_or_test_f(void *pvParameters)
              (int32_t)presentation_ret);
   app_ret = audio_playback_app_init();
   {
-    const comm_app_io_t comm_io = {bsp_rs485_init, bsp_rs485_poll, bsp_rs485_send};
+    const comm_app_io_t comm_io =
+    {
+      .pf_init = bsp_rs485_init,
+      .pf_receive = bsp_rs485_poll,
+      .pf_send = bsp_rs485_send,
+      .pf_get_rx_progress = bsp_rs485_get_rx_progress
+    };
     const comm_app_actions_t comm_actions =
     {
       .p_context = &s_checkpoint_config,
@@ -834,13 +617,14 @@ void start_or_test_f(void *pvParameters)
     if (PLATFORM_ERR_OK != comm_ret)
       plat_log_e("COMM startup failed: ret=%d", (int)comm_ret);
   }
+#if START_TEST_4G_ENABLED
   {
     const remote_modem_app_io_t modem_io = {NULL, NULL, 1U};
     plat_log_i("4G application init=%d, test: newline echo enabled",
                (int32_t)remote_modem_app_init(&modem_io));
   }
-  plat_log_i("Audio app init=%d, SW2=MP3, SW3=volume-5, SW4=volume+5/hold=4G config, SW5=voice x3/double x1/hold stop",
-              (int32_t)app_ret);
+#endif
+  plat_log_i("Audio app init=%d, SW3=volume-5, SW4=volume+5", (int32_t)app_ret);
 
   now_ms = plat_tick_get_ms();
   for(button_index = 0U;
@@ -879,7 +663,7 @@ void start_or_test_f(void *pvParameters)
   /* add user code begin start_or_test_f 1 */
     gpio_irq_test_poll();
     sd_card_presence_app_poll();
-    usb_test_poll();
+    usb_upgrade_port_poll();
 
     now_ms = plat_tick_get_ms();
     for(button_index = 0U;
@@ -920,6 +704,7 @@ void start_or_test_f(void *pvParameters)
         continue;
       }
 
+#if START_TEST_4G_ENABLED
       if((2U == button_index) &&
          (BUTTON_EVENT_LONG_PRESS == button_event))
       {
@@ -932,33 +717,7 @@ void start_or_test_f(void *pvParameters)
                    (unsigned long)uxTaskGetStackHighWaterMark(NULL));
         continue;
       }
-      if(3U == button_index)
-      {
-        if(PLATFORM_ERR_OK == app_ret)
-        {
-          if(BUTTON_EVENT_LONG_PRESS == button_event)
-          {
-            play_ret = audio_playback_app_stop();
-            plat_log_i("SW5 stop request enqueue ret=%d", (int32_t)play_ret);
-          }
-          else if((BUTTON_EVENT_CLICK == button_event) ||
-                  (BUTTON_EVENT_DOUBLE_CLICK == button_event))
-          {
-            const audio_playback_voice_request_t request =
-            {
-              .encoding = BSP_VOICE_SYNTHESIS_ENCODING_GBK,
-              .p_text = voice_synthesis_test_text,
-              .text_size = (uint16_t)sizeof(voice_synthesis_test_text),
-              .repeat_count = (BUTTON_EVENT_CLICK == button_event) ? 3U : 0U
-            };
-
-            play_ret = audio_playback_app_voice_request(&request);
-            plat_log_i("SW5 voice request enqueue ret=%d, repeat_count=%u",
-                       (int32_t)play_ret, (unsigned int)request.repeat_count);
-          }
-        }
-        continue;
-      }
+#endif
       if(BUTTON_EVENT_PRESS != button_event)
       {
         continue;
@@ -966,12 +725,7 @@ void start_or_test_f(void *pvParameters)
 
       if(0U == button_index)
       {
-        if(PLATFORM_ERR_OK == app_ret)
-        {
-          play_ret = audio_playback_app_play_default();
-          plat_log_i("SW2 pressed, MP3 request enqueue ret=%d",
-                     (int32_t)play_ret);
-        }
+        usb_upgrade_port_request();
       }
       else
       {
@@ -1007,27 +761,7 @@ void start_or_test_f(void *pvParameters)
               volume_step,
               START_TEST_I2C_TIMEOUT_MS,
               &volume_level);
-          if(PLATFORM_ERR_OK == volume_ret)
-          {
-            if(1U == button_index)
-            {
-              play_ret = audio_playback_app_voice_speak(
-                  BSP_VOICE_SYNTHESIS_ENCODING_GBK,
-                  volume_decrease_prompt,
-                  (uint16_t)sizeof(volume_decrease_prompt));
-            }
-            else
-            {
-              play_ret = audio_playback_app_voice_speak(
-                  BSP_VOICE_SYNTHESIS_ENCODING_GBK,
-                  volume_increase_prompt,
-                  (uint16_t)sizeof(volume_increase_prompt));
-            }
-            plat_log_i("SW%u volume prompt enqueue ret=%d",
-                       (unsigned int)(button_index + 2U),
-                       (int32_t)play_ret);
-          }
-          else
+          if(PLATFORM_ERR_OK != volume_ret)
           {
             volume_ready = 0U;
           }
@@ -1040,7 +774,7 @@ void start_or_test_f(void *pvParameters)
       }
     }
 
-    vTaskDelay(pdMS_TO_TICKS(START_TEST_KEY_POLL_MS));
+    vTaskDelay(usb_upgrade_port_is_active() ? 1U : pdMS_TO_TICKS(START_TEST_KEY_POLL_MS));
 
   /* add user code end start_or_test_f 1 */
   }

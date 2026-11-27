@@ -32,6 +32,22 @@ typedef struct AT32F435_UART_RX_T
     uint8_t              is_started;
 } at32f435_uart_rx_t;
 
+typedef enum AT32F435_UART_TX_STATE_T {
+    AT32F435_UART_TX_IDLE = 0U,
+    AT32F435_UART_TX_BLOCKING,
+    AT32F435_UART_TX_FEEDING,
+    AT32F435_UART_TX_WAIT_COMPLETE,
+} at32f435_uart_tx_state_t;
+
+typedef struct AT32F435_UART_TX_T {
+    const uint8_t           *p_next;
+    const uint8_t           *p_second;
+    plat_uart_tx_done_cb_t   pf_done;
+    uint16_t                 remaining;
+    uint16_t                 second_size;
+    at32f435_uart_tx_state_t state;
+} at32f435_uart_tx_t;
+
 typedef struct AT32F435_UART_CFG_T
 {
     usart_type       *p_uart;
@@ -90,6 +106,7 @@ static const at32f435_uart_cfg_t uart_cfg[BOARD_UART_RESOURCE_NUM] =
 };
 
 static at32f435_uart_rx_t uart_rx_table[BOARD_UART_RESOURCE_NUM];
+static at32f435_uart_tx_t s_uart_tx_table[BOARD_UART_RESOURCE_NUM];
 
 _Static_assert((sizeof(uart_cfg) / sizeof(uart_cfg[0])) ==
                    BOARD_UART_RESOURCE_NUM,
@@ -105,6 +122,13 @@ _Static_assert((AT32F435_UART_VTX316_RX_SIZE &
                "VTX316 UART RX size must be a power of two");
 
 /* private  functions  ------------------------------------------------------*/
+/* Serialize the task-side state updates with the UART ISR, independent of RTOS priority. */
+static uint32_t at32f435_uart_tx_lock(void) {
+    const uint32_t irq_mask = __get_PRIMASK();
+    __disable_irq();
+    return irq_mask;
+}
+
 /**
   * @brief            : Wait until a UART status flag is set.
   * @retval           : PLATFORM_ERR_OK or PLATFORM_ERR_TIMEOUT.
@@ -216,52 +240,118 @@ at32f435_uart_rx_sync(plat_uart_id_t id, uint16_t *p_write_size)
 /* exported functions -------------------------------------------------------*/
 /**
   * @brief            : Send data through a logical UART in blocking mode.
-  * @retval           : PLATFORM_ERR_OK, PLATFORM_ERR_PARAM or
-  *                     PLATFORM_ERR_TIMEOUT.
+  * @retval           : PLATFORM_ERR_OK, PLATFORM_ERR_PARAM, PLATFORM_ERR_BUSY
+  *                     or PLATFORM_ERR_TIMEOUT.
   * @param[in]        : id Logical UART ID.
   * @param[in]        : p_data Data buffer to send.
   * @param[in]        : size Number of bytes to send.
   * @param[in]        : timeout_ms Total send timeout in milliseconds.
   */
-platform_err_t plat_uart_send(plat_uart_id_t id,
-                              const uint8_t *p_data,
-                              uint16_t       size,
-                              uint32_t       timeout_ms)
-{
+platform_err_t
+plat_uart_send(plat_uart_id_t id, const uint8_t *p_data, uint16_t size, uint32_t timeout_ms) {
     const at32f435_uart_cfg_t *p_cfg;
-    usart_type *p_uart;
-    uint32_t    start_tick;
-    uint16_t    index;
+    usart_type                *p_uart;
+    uint32_t                   start_tick;
+    uint16_t                   index;
 
-    if(((uint32_t)id >= (uint32_t)BOARD_UART_RESOURCE_NUM) ||
-       (NULL == p_data) ||
-       (0U == size) ||
-       (0U == timeout_ms))
-    {
+    if (((uint32_t)id >= (uint32_t)BOARD_UART_RESOURCE_NUM) || (NULL == p_data) || (0U == size) ||
+        (0U == timeout_ms)) {
         return PLATFORM_ERR_PARAM;
     }
 
-    p_cfg = &uart_cfg[id];
-    p_uart = p_cfg->p_uart;
+    at32f435_uart_tx_t *p_tx     = &s_uart_tx_table[id];
+    const uint32_t      irq_mask = at32f435_uart_tx_lock();
+    if (AT32F435_UART_TX_IDLE != p_tx->state) {
+        __set_PRIMASK(irq_mask);
+        return PLATFORM_ERR_BUSY;
+    }
+    p_tx->state = AT32F435_UART_TX_BLOCKING;
+    __set_PRIMASK(irq_mask);
+
+    p_cfg      = &uart_cfg[id];
+    p_uart     = p_cfg->p_uart;
     start_tick = plat_tick_get_ms();
 
-    for(index = 0U; index < size; index++)
-    {
-        if(PLATFORM_ERR_OK != at32f435_uart_wait_flag(p_uart,
-                                                      USART_TDBE_FLAG,
-                                                      start_tick,
-                                                      timeout_ms))
-        {
-            return PLATFORM_ERR_TIMEOUT;
+    platform_err_t ret = PLATFORM_ERR_OK;
+    for (index = 0U; index < size; index++) {
+        ret = at32f435_uart_wait_flag(p_uart, USART_TDBE_FLAG, start_tick, timeout_ms);
+        if (PLATFORM_ERR_OK != ret) {
+            break;
         }
 
         usart_data_transmit(p_uart, (uint16_t)p_data[index]);
     }
 
-    return at32f435_uart_wait_flag(p_uart,
-                                   USART_TDC_FLAG,
-                                   start_tick,
-                                   timeout_ms);
+    if (PLATFORM_ERR_OK == ret) {
+        ret = at32f435_uart_wait_flag(p_uart, USART_TDC_FLAG, start_tick, timeout_ms);
+    }
+
+    const uint32_t release_mask = at32f435_uart_tx_lock();
+    p_tx->state                 = AT32F435_UART_TX_IDLE;
+    __set_PRIMASK(release_mask);
+    return ret;
+}
+
+platform_err_t plat_uart_send_it(plat_uart_id_t         id,
+                                 const uint8_t         *p_data,
+                                 uint16_t               size,
+                                 plat_uart_tx_done_cb_t pf_done) {
+    return plat_uart_send_parts_it(id, p_data, size, NULL, 0U, pf_done);
+}
+
+platform_err_t plat_uart_send_parts_it(plat_uart_id_t         id,
+                                       const uint8_t         *p_first,
+                                       uint16_t               first_size,
+                                       const uint8_t         *p_second,
+                                       uint16_t               second_size,
+                                       plat_uart_tx_done_cb_t pf_done) {
+    if (((uint32_t)id >= (uint32_t)BOARD_UART_RESOURCE_NUM) || (NULL == p_first) ||
+        (0U == first_size) || ((0U != second_size) && (NULL == p_second)) || (NULL == pf_done)) {
+        return PLATFORM_ERR_PARAM;
+    }
+
+    at32f435_uart_tx_t *p_tx     = &s_uart_tx_table[id];
+    const uint32_t      irq_mask = at32f435_uart_tx_lock();
+    if (AT32F435_UART_TX_IDLE != p_tx->state) {
+        __set_PRIMASK(irq_mask);
+        return PLATFORM_ERR_BUSY;
+    }
+
+    p_tx->p_next      = p_first;
+    p_tx->remaining   = first_size;
+    p_tx->p_second    = (0U != second_size) ? p_second : NULL;
+    p_tx->second_size = second_size;
+    p_tx->pf_done     = pf_done;
+    p_tx->state       = AT32F435_UART_TX_FEEDING;
+    usart_interrupt_enable(uart_cfg[id].p_uart, USART_TDBE_INT, TRUE);
+    __set_PRIMASK(irq_mask);
+    return PLATFORM_ERR_OK;
+}
+
+platform_err_t plat_uart_send_it_abort(plat_uart_id_t id) {
+    if ((uint32_t)id >= (uint32_t)BOARD_UART_RESOURCE_NUM) {
+        return PLATFORM_ERR_PARAM;
+    }
+
+    at32f435_uart_tx_t *p_tx     = &s_uart_tx_table[id];
+    const uint32_t      irq_mask = at32f435_uart_tx_lock();
+    if (AT32F435_UART_TX_BLOCKING == p_tx->state) {
+        __set_PRIMASK(irq_mask);
+        return PLATFORM_ERR_BUSY;
+    }
+    if (AT32F435_UART_TX_IDLE != p_tx->state) {
+        usart_type *p_uart = uart_cfg[id].p_uart;
+        usart_interrupt_enable(p_uart, USART_TDBE_INT, FALSE);
+        usart_interrupt_enable(p_uart, USART_TDC_INT, FALSE);
+        p_tx->p_next      = NULL;
+        p_tx->remaining   = 0U;
+        p_tx->p_second    = NULL;
+        p_tx->second_size = 0U;
+        p_tx->pf_done     = NULL;
+        p_tx->state       = AT32F435_UART_TX_IDLE;
+    }
+    __set_PRIMASK(irq_mask);
+    return PLATFORM_ERR_OK;
 }
 
 /**
@@ -359,6 +449,23 @@ platform_err_t plat_uart_get_rx_size(plat_uart_id_t id, uint16_t *p_size)
     return PLATFORM_ERR_OK;
 }
 
+platform_err_t plat_uart_get_rx_progress(plat_uart_id_t id, uint16_t *p_progress) {
+    if (((uint32_t)id >= (uint32_t)BOARD_UART_RESOURCE_NUM) || (NULL == p_progress) ||
+        (0U == uart_rx_table[id].is_started)) {
+        return PLATFORM_ERR_PARAM;
+    }
+
+    const at32f435_uart_cfg_t *p_cfg     = &uart_cfg[id];
+    const uint16_t             remaining = dma_data_number_get(p_cfg->p_rx_dma);
+    if (remaining > p_cfg->rx_buffer_size) {
+        return PLATFORM_ERR_HW;
+    }
+
+    /* Zero and the reloaded count both denote the ring boundary. */
+    *p_progress = (0U == remaining) ? 0U : (uint16_t)(p_cfg->rx_buffer_size - remaining);
+    return PLATFORM_ERR_OK;
+}
+
 /**
   * @brief            : Register the UART receive event callback.
   * @retval           : PLATFORM_ERR_OK or PLATFORM_ERR_PARAM.
@@ -422,6 +529,40 @@ void plat_uart_rx_irq_handler(plat_uart_id_t id)
                                            PLAT_UART_RX_EVENT_IDLE);
         }
         at32f435_uart_rx_notify(id, event, write_size);
+    }
+}
+
+void plat_uart_tx_irq_handler(plat_uart_id_t id) {
+    if ((uint32_t)id >= (uint32_t)BOARD_UART_RESOURCE_NUM) {
+        return;
+    }
+
+    at32f435_uart_tx_t *p_tx   = &s_uart_tx_table[id];
+    usart_type         *p_uart = uart_cfg[id].p_uart;
+    if ((AT32F435_UART_TX_FEEDING == p_tx->state) &&
+        (SET == usart_interrupt_flag_get(p_uart, USART_TDBE_FLAG))) {
+        /* The status read followed by a data write clears any earlier TDC. */
+        usart_data_transmit(p_uart, *p_tx->p_next);
+        p_tx->p_next++;
+        p_tx->remaining--;
+        if ((0U == p_tx->remaining) && (0U != p_tx->second_size)) {
+            p_tx->p_next      = p_tx->p_second;
+            p_tx->remaining   = p_tx->second_size;
+            p_tx->p_second    = NULL;
+            p_tx->second_size = 0U;
+        } else if (0U == p_tx->remaining) {
+            usart_interrupt_enable(p_uart, USART_TDBE_INT, FALSE);
+            p_tx->state = AT32F435_UART_TX_WAIT_COMPLETE;
+            usart_interrupt_enable(p_uart, USART_TDC_INT, TRUE);
+        }
+    } else if ((AT32F435_UART_TX_WAIT_COMPLETE == p_tx->state) &&
+               (SET == usart_interrupt_flag_get(p_uart, USART_TDC_FLAG))) {
+        const plat_uart_tx_done_cb_t pf_done = p_tx->pf_done;
+        usart_interrupt_enable(p_uart, USART_TDC_INT, FALSE);
+        p_tx->p_next  = NULL;
+        p_tx->pf_done = NULL;
+        p_tx->state   = AT32F435_UART_TX_IDLE;
+        pf_done(id);
     }
 }
 

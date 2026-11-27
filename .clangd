@@ -1,0 +1,3 @@
+# Match the Keil target's Short wchar setting (vShortWch=1).
+CompileFlags:
+  Add: [-fshort-wchar]

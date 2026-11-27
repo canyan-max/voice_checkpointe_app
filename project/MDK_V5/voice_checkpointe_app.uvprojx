@@ -80,9 +80,9 @@
           </BeforeMake>
           <AfterMake>
             <RunUserProg1>1</RunUserProg1>
-            <RunUserProg2>0</RunUserProg2>
+            <RunUserProg2>1</RunUserProg2>
             <UserProg1Name>./keil5_disp_size_bar.exe</UserProg1Name>
-            <UserProg2Name></UserProg2Name>
+            <UserProg2Name>fromelf.exe --bin --output .\Listings\@L.bin !L</UserProg2Name>
             <UserProg1Dos16Mode>0</UserProg1Dos16Mode>
             <UserProg2Dos16Mode>0</UserProg2Dos16Mode>
             <nStopA1X>0</nStopA1X>
@@ -275,8 +275,8 @@
               </OCR_RVCT3>
               <OCR_RVCT4>
                 <Type>1</Type>
-                <StartAddress>0x8000000</StartAddress>
-                <Size>0x100000</Size>
+                <StartAddress>0x8008000</StartAddress>
+                <Size>0xf7800</Size>
               </OCR_RVCT4>
               <OCR_RVCT5>
                 <Type>1</Type>
@@ -608,6 +608,16 @@
               <FilePath>../src/freertos_app.c</FilePath>
             </File>
             <File>
+              <FileName>usb_upgrade_port.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>../src/usb_upgrade_port.c</FilePath>
+            </File>
+            <File>
+              <FileName>usb_upgrade_port.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>../inc/usb_upgrade_port.h</FilePath>
+            </File>
+            <File>
               <FileName>include_port.c</FileName>
               <FileType>1</FileType>
               <FilePath>../src/include_port.c</FilePath>
@@ -723,6 +733,16 @@
               <FilePath>..\..\01_App\comm_app.c</FilePath>
             </File>
             <File>
+              <FileName>firmware_upgrade_app.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\01_App\firmware_upgrade_app.c</FilePath>
+            </File>
+            <File>
+              <FileName>firmware_upgrade_app.h</FileName>
+              <FileType>5</FileType>
+              <FilePath>..\..\01_App\firmware_upgrade_app.h</FilePath>
+            </File>
+            <File>
               <FileName>comm_app.h</FileName>
               <FileType>5</FileType>
               <FilePath>..\..\01_App\comm_app.h</FilePath>
@@ -806,6 +826,11 @@
               <FileName>checkpoint_config.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\..\02_Service\checkpoint_config.c</FilePath>
+            </File>
+            <File>
+              <FileName>firmware_staging_service.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\..\02_Service\firmware_staging_service.c</FilePath>
             </File>
             <File>
               <FileName>checkpoint_config_storage.c</FileName>

@@ -99,6 +99,10 @@ platform_err_t bsp_rs485_poll(uint8_t *p_data,
     return ret;
 }
 
+platform_err_t bsp_rs485_get_rx_progress(uint16_t *p_progress) {
+    return plat_uart_get_rx_progress(BOARD_UART_RS485, p_progress);
+}
+
 platform_err_t bsp_rs485_send(const uint8_t *p_data,
                               uint16_t size,
                               uint32_t timeout_ms)
